@@ -1,0 +1,20 @@
+<div class="container flex flex-col items-center text-center mt-24">
+  <h1 class="text-5xl font-black dark:text-gray-100">SAML Not Configured</h1>
+
+  <div class="mt-4 text-xl dark:text-gray-100">
+    SAML single sign-on is not available for this organization.
+  </div>
+
+  <div class="mt-4 text-gray-500">
+    <p>Please contact your administrator to enable SAML authentication.</p>
+  </div>
+
+  <div class="mt-8 flex">
+    <.button_link href={Routes.auth_path(@conn, :login_form)} class="mr-4">
+      Back to Login
+    </.button_link>
+    <.button_link theme="secondary" href={PlausibleWeb.LayoutView.home_dest(@conn)}>
+      Go to Homepage
+    </.button_link>
+  </div>
+</div>

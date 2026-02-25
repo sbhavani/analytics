@@ -63,6 +63,16 @@
           instead.
         <% end %>
       </:item>
+      <:item :if={ee?()}>
+        <%= on_ee do %>
+          Or sign in with SAML SSO?
+          <.styled_link href={
+            Routes.saml_path(@conn, :login, "self")
+          }>
+            Sign in with SSO
+          </.styled_link>
+        <% end %>
+      </:item>
       <:item>
         Forgot password?
         <.styled_link href="/password/request-reset">
