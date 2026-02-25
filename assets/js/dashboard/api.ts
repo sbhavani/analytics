@@ -139,3 +139,106 @@ export const mutation = async <
   })
   return handleApiResponse(response)
 }
+
+// Webhook Types
+export interface Webhook {
+  id: string
+  url: string
+  name: string
+  active: boolean
+  secret: boolean | null
+  triggers: Trigger[]
+  inserted_at: string
+  updated_at: string
+}
+
+export interface Trigger {
+  id: string
+  type: 'visitor_spike' | 'goal_completion'
+  threshold: number | null
+  goal_id: string | null
+  inserted_at: string
+}
+
+export interface Delivery {
+  id: string
+  event_id: string
+  status: 'pending' | 'success' | 'failed' | 'retrying'
+  response_code: number | null
+  response_body: string | null
+  error_message: string | null
+  attempt: number
+  inserted_at: string
+}
+
+export interface DeliveryPagination {
+  page: number
+  limit: number
+  total_pages: number
+  total_count: number
+}
+
+// Webhook API functions
+export const webhooks = {
+  async list(siteId: string): Promise<{ webhooks: Webhook[] }> {
+    return get(`/api/sites/${siteId}/webhooks`)
+  },
+
+  async get(siteId: string, webhookId: string): Promise<{ webhook: Webhook }> {
+    return get(`/api/sites/${siteId}/webhooks/${webhookId}`)
+  },
+
+  async create(siteId: string, webhook: {
+    url: string
+    name: string
+    secret?: string
+    triggers?: { type: string; threshold?: number; goal_id?: string }[]
+  }): Promise<{ webhook: Webhook }> {
+    return mutation(`/api/sites/${siteId}/webhooks`, {
+      method: 'POST',
+      body: { webhook }
+    })
+  },
+
+  async update(siteId: string, webhookId: string, webhook: {
+    url?: string
+    name?: string
+    secret?: string
+    active?: boolean
+  }): Promise<{ webhook: Webhook }> {
+    return mutation(`/api/sites/${siteId}/webhooks/${webhookId}`, {
+      method: 'PUT',
+      body: { webhook }
+    })
+  },
+
+  async delete(siteId: string, webhookId: string): Promise<void> {
+    return mutation(`/api/sites/${siteId}/webhooks/${webhookId}`, {
+      method: 'DELETE'
+    })
+  },
+
+  async addTrigger(siteId: string, webhookId: string, trigger: {
+    type: string
+    threshold?: number
+    goal_id?: string
+  }): Promise<{ trigger: Trigger }> {
+    return mutation(`/api/sites/${siteId}/webhooks/${webhookId}/triggers`, {
+      method: 'POST',
+      body: { trigger }
+    })
+  },
+
+  async removeTrigger(siteId: string, webhookId: string, triggerId: string): Promise<void> {
+    return mutation(`/api/sites/${siteId}/webhooks/${webhookId}/triggers/${triggerId}`, {
+      method: 'DELETE'
+    })
+  },
+
+  async getDeliveries(siteId: string, webhookId: string, page = 1, limit = 20): Promise<{
+    deliveries: Delivery[]
+    pagination: DeliveryPagination
+  }> {
+    return get(`/api/sites/${siteId}/webhooks/${webhookId}/deliveries?page=${page}&limit=${limit}`)
+  }
+}

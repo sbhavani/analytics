@@ -421,6 +421,22 @@ defmodule PlausibleWeb.Router do
 
       get "/sites", Api.InternalController, :sites
     end
+
+    # Webhook API - requires auth via site access
+    scope "/api/sites/:site_id/webhooks", PlausibleWeb.API do
+      pipe_through :api
+
+      get "/", WebhookController, :index
+      post "/", WebhookController, :create
+      get "/:id", WebhookController, :show
+      put "/:id", WebhookController, :update
+      delete "/:id", WebhookController, :delete
+
+      post "/:id/triggers", WebhookController, :add_trigger
+      delete "/:id/triggers/:trigger_id", WebhookController, :remove_trigger
+
+      get "/:id/deliveries", WebhookController, :deliveries
+    end
   end
 
   scope "/", PlausibleWeb do
