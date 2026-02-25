@@ -587,6 +587,76 @@ defmodule PlausibleWeb.Api.StatsController do
       end
     end
 
+    def funnel_comparison(conn, %{"id" => funnel_id} = params) do
+      site = Plausible.Repo.preload(conn.assigns.site, :team)
+
+      with :ok <- Plausible.Billing.Feature.Funnels.check_availability(site.team),
+           {funnel_id, ""} <- Integer.parse(funnel_id),
+           {period_a, params_a} <- extract_comparison_params(params, "period_a"),
+           {period_b, params_b} <- extract_comparison_params(params, "period_b"),
+           query_a <- Query.from(site, Map.put(params_a, "period", period_a), debug_metadata: debug_metadata(conn)),
+           query_b <- Query.from(site, Map.put(params_b, "period", period_b), debug_metadata: debug_metadata(conn)),
+           :ok <- validate_funnel_query(query_a),
+           :ok <- validate_funnel_query(query_b),
+           {:ok, comparison} <- Stats.funnel_comparison(site, query_a, query_b, funnel_id) do
+        json(conn, comparison)
+      else
+        {:error, {:invalid_funnel_query, due_to}} ->
+          bad_request(
+            conn,
+            "We are unable to show funnels when the dashboard is filtered by #{due_to}",
+            %{
+              level: :normal
+            }
+          )
+
+        {:error, :funnel_not_found} ->
+          conn
+          |> put_status(404)
+          |> json(%{error: "Funnel not found"})
+          |> halt()
+
+        {:error, :upgrade_required} ->
+          H.payment_required(
+            conn,
+            "#{Plausible.Billing.Feature.Funnels.display_name()} is part of the Plausible Business plan. To get access to this feature, please upgrade your account."
+          )
+
+        _ ->
+          bad_request(conn, "There was an error with your request")
+      end
+    end
+
+    defp extract_comparison_params(params, prefix) do
+      start_key = "#{prefix}_start"
+      end_key = "#{prefix}_end"
+
+      with {:ok, start_date} <- Map.fetch(params, start_key),
+           {:ok, end_date} <- Map.fetch(params, end_key),
+           {:ok, period} <- parse_comparison_period(start_date, end_date) do
+        {period, %{"date" => "#{start_date}:#{end_date}"}}
+      else
+        _ -> {:error, :invalid_comparison_params}
+      end
+    end
+
+    defp parse_comparison_period(start_date, end_date) do
+      start = Date.from_iso8601!(start_date)
+      end = Date.from_iso8601!(end_date)
+      diff = Date.diff(end, start)
+
+      cond do
+        diff < 0 -> {:error, :invalid_date_range}
+        diff <= 7 -> {:ok, "7days"}
+        diff <= 30 -> {:ok, "30days"}
+        diff <= 90 -> {:ok, "90days"}
+        diff <= 365 -> {:ok, "year"}
+        true -> {:ok, "custom"}
+      end
+    rescue
+      _ -> {:error, :invalid_date_format}
+    end
+
     defp validate_funnel_query(query) do
       cond do
         toplevel_goal_filter?(query) ->

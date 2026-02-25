@@ -14,6 +14,7 @@ defmodule Plausible.Stats.Funnel do
 
   alias Plausible.ClickhouseRepo
   alias Plausible.Stats.Base
+  alias Plausible.Stats.Query
 
   @spec funnel(Plausible.Site.t(), Plausible.Stats.Query.t(), Funnel.t() | pos_integer()) ::
           {:ok, map()} | {:error, :funnel_not_found}
@@ -58,6 +59,112 @@ defmodule Plausible.Stats.Funnel do
      }}
   end
 
+  @spec funnel_comparison(Plausible.Site.t(), Plausible.Stats.Query.t(), Plausible.Stats.Query.t(), Funnel.t() | pos_integer()) ::
+          {:ok, map()} | {:error, :funnel_not_found}
+  def funnel_comparison(site, query_a, query_b, funnel_id) when is_integer(funnel_id) do
+    case Funnels.get(site.id, funnel_id) do
+      %Funnel{} = funnel ->
+        funnel_comparison(site, query_a, query_b, funnel)
+
+      nil ->
+        {:error, :funnel_not_found}
+    end
+  end
+
+  def funnel_comparison(_site, query_a, query_b, %Funnel{} = funnel) do
+    # Query both periods
+    funnel_data_a =
+      query_a
+      |> Base.base_event_query()
+      |> query_funnel(funnel)
+
+    funnel_data_b =
+      query_b
+      |> Base.base_event_query()
+      |> query_funnel(funnel)
+
+    steps_a = backfill_steps(funnel_data_a, funnel)
+    steps_b = backfill_steps(funnel_data_b, funnel)
+
+    # Extract date ranges
+    date_range_a = Query.date_range(query_a)
+    date_range_b = Query.date_range(query_b)
+
+    # Format steps to match API contract
+    formatted_steps_a = format_comparison_steps(steps_a)
+    formatted_steps_b = format_comparison_steps(steps_b)
+
+    # Build comparison data (skip first step as there's nothing to compare)
+    comparison =
+      Enum.zip(steps_a, steps_b)
+      |> Enum.drop(1)
+      |> Enum.map(fn {step_a, step_b} ->
+        %{
+          step: step_a.step_order || step_b.step_order,
+          visitors_change: percentage_change(step_a.visitors, step_b.visitors),
+          conversion_change: percentage_change(step_a.conversion_rate_step, step_b.conversion_rate_step)
+        }
+      end)
+
+    {:ok,
+     %{
+       funnel_id: funnel.id,
+       funnel_name: funnel.name,
+       period_a: %{
+         date_range: [Date.to_iso8601(date_range_a.first), Date.to_iso8601(date_range_a.last)],
+         steps: formatted_steps_a
+       },
+       period_b: %{
+         date_range: [Date.to_iso8601(date_range_b.first), Date.to_iso8601(date_range_b.last)],
+         steps: formatted_steps_b
+       },
+       comparison: comparison
+     }}
+  end
+
+  defp format_comparison_steps(steps) do
+    Enum.map(steps, fn step ->
+      base = %{
+        step: step.step_order,
+        visitors: step.visitors,
+        name: step.label
+      }
+
+      # Add conversion_rate and dropoff_rate for steps after the first
+      if step.step_order > 1 do
+        Map.merge(base, %{
+          conversion_rate: parse_percentage(step.conversion_rate_step),
+          dropoff_rate: parse_percentage(step.dropoff_rate)
+        })
+      else
+        base
+      end
+    end)
+  end
+
+  defp percentage_change(old_value, new_value) do
+    old_value = parse_percentage(old_value)
+    new_value = parse_percentage(new_value)
+
+    if old_value == 0 || new_value == 0 do
+      "0"
+    else
+      change = ((new_value - old_value) / old_value) * 100
+      Decimal.from_float(change)
+      |> Decimal.round(2)
+      |> Decimal.to_string()
+    end
+  end
+
+  defp parse_percentage(value) when is_binary(value) do
+    case Float.parse(value) do
+      {float, _} -> float
+      :error -> 0.0
+    end
+  end
+
+  defp parse_percentage(value), do: value
+
   defp query_funnel(query, funnel_definition) do
     q_events =
       from(e in query,
@@ -80,12 +187,12 @@ defmodule Plausible.Stats.Funnel do
   defp select_funnel(db_query, funnel_definition) do
     window_funnel_steps =
       Enum.reduce(funnel_definition.steps, nil, fn step, acc ->
-        goal_condition = Plausible.Stats.Goals.goal_condition(step.goal)
+        step_condition = step_condition(step)
 
         if acc do
-          dynamic([q], fragment("?, ?", ^acc, ^goal_condition))
+          dynamic([q], fragment("?, ?", ^acc, ^step_condition))
         else
-          dynamic([q], fragment("?", ^goal_condition))
+          dynamic([q], fragment("?", ^step_condition))
         end
       end)
 
@@ -101,6 +208,18 @@ defmodule Plausible.Stats.Funnel do
           step: dynamic_window_funnel
         }
     )
+  end
+
+  defp step_condition(%{goal: nil, event_name: nil}) do
+    raise ArgumentError, "Funnel step must have either a goal or event_name"
+  end
+
+  defp step_condition(%{goal: goal}) when not is_nil(goal) do
+    Plausible.Stats.Goals.goal_condition(goal)
+  end
+
+  defp step_condition(%{event_name: event_name}) when not is_nil(event_name) do
+    dynamic([q], q.name == ^event_name)
   end
 
   defp backfill_steps(funnel_result, funnel) do
@@ -140,18 +259,27 @@ defmodule Plausible.Stats.Funnel do
       conversion_rate_step = percentage(current_visitors, visitors_at_previous)
 
       step = %{
+        step_order: step.step_order,
         dropoff: dropoff,
-        dropoff_percentage: dropoff_percentage,
+        dropoff_rate: dropoff_percentage,
         conversion_rate: conversion_rate,
         conversion_rate_step: conversion_rate_step,
         visitors: visitors_at_step,
-        label: to_string(step.goal)
+        label: step_label(step)
       }
 
       {total_visitors, current_visitors, [step | acc]}
     end)
     |> elem(2)
     |> Enum.reverse()
+  end
+
+  defp step_label(%{goal: nil, event_name: event_name}) when not is_nil(event_name) do
+    event_name
+  end
+
+  defp step_label(%{goal: goal}) when not is_nil(goal) do
+    to_string(goal)
   end
 
   defp percentage(x, y) when x in [0, nil] or y in [0, nil] do

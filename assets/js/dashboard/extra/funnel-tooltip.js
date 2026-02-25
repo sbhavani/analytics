@@ -70,7 +70,7 @@ export default function FunnelTooltip(palette, funnel) {
                 <span>${dataIndex == 0 ? funnel.never_entering_visitors.toLocaleString() : currentStep.dropoff.toLocaleString()}</span>
               </td >
               <td class="text-right text-sm">
-                <span>${dataIndex == 0 ? funnel.never_entering_visitors_percentage : currentStep.dropoff_percentage}%</span>
+                <span>${dataIndex == 0 ? funnel.never_entering_visitors_percentage : currentStep.dropoff_rate}%</span>
               </td>
             </tr >
           </table >

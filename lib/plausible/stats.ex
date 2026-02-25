@@ -35,6 +35,10 @@ defmodule Plausible.Stats do
     def funnel(site, query, funnel) do
       Plausible.Stats.Funnel.funnel(site, query, funnel)
     end
+
+    def funnel_comparison(site, query_a, query_b, funnel) do
+      Plausible.Stats.Funnel.funnel_comparison(site, query_a, query_b, funnel)
+    end
   end
 
   def filter_suggestions(site, query, filter_name, filter_search) do
