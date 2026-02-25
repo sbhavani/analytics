@@ -245,7 +245,12 @@ defmodule PlausibleWeb.AuthController do
       error = Phoenix.Flash.get(conn.assigns.flash, :login_error)
 
       case {login_preference, params["prefer"], error} do
+        {_, "sso", _} ->
+          # Explicit SSO login preference via query param
+          redirect(conn, to: Routes.sso_path(conn, :login_form, return_to: params["return_to"]))
+
         {"sso", nil, nil} ->
+          # SSO login preference from session
           redirect(conn, to: Routes.sso_path(conn, :login_form, return_to: params["return_to"]))
 
         _ ->
@@ -576,9 +581,49 @@ defmodule PlausibleWeb.AuthController do
   def logout(conn, params) do
     redirect_to = Map.get(params, "redirect", "/")
 
-    conn
-    |> UserAuth.log_out_user()
-    |> redirect(to: redirect_to)
+    # Check if user logged in via SSO and SLO is configured
+    login_preference = LoginPreference.get(conn)
+
+    if login_preference == "sso" do
+      # Try to get the SSO integration from the current team
+      if current_team = conn.assigns[:current_team] do
+        case Plausible.Auth.SSO.get_integration_for(current_team) do
+          {:ok, integration} ->
+            if integration.config.idp_logout_url do
+              # Initiate SLO - redirect to IdP logout
+              # Note: We don't log out locally yet; that'll happen when we receive the SLO response
+              redirect(conn,
+                to:
+                  Routes.sso_path(
+                    conn,
+                    :saml_slo,
+                    integration.identifier,
+                    return_to: redirect_to
+                  )
+              )
+            else
+              # No SLO URL configured, just do local logout
+              conn
+              |> UserAuth.log_out_user()
+              |> redirect(to: redirect_to)
+            end
+
+          {:error, :not_found} ->
+            # No SSO integration found, just do local logout
+            conn
+            |> UserAuth.log_out_user()
+            |> redirect(to: redirect_to)
+        end
+      else
+        conn
+        |> UserAuth.log_out_user()
+        |> redirect(to: redirect_to)
+      end
+    else
+      conn
+      |> UserAuth.log_out_user()
+      |> redirect(to: redirect_to)
+    end
   end
 
   def google_auth_callback(conn, %{"error" => error, "state" => state} = params) do

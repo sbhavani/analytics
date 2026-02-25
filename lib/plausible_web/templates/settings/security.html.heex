@@ -238,6 +238,31 @@
     </div>
   </.tile>
 
+  <.tile :if={@sso_info.is_sso_user} docs="sso-status">
+    <:title>
+      <a id="sso-status">Single Sign-On (SSO)</a>
+    </:title>
+    <:subtitle>
+      Your account is connected to an identity provider.
+    </:subtitle>
+
+    <div class="flex flex-col gap-4">
+      <div>
+        <.label class="mb-1">Identity Provider</.label>
+        <p class="text-gray-900 dark:text-gray-300">
+          {@sso_info.integration_name || "Enterprise SSO"}
+        </p>
+      </div>
+
+      <div :if={@sso_info.last_sso_login}>
+        <.label class="mb-1">Last SSO Login</.label>
+        <p class="text-gray-900 dark:text-gray-300">
+          {Calendar.strftime(@sso_info.last_sso_login, "%B %d, %Y at %H:%M")}
+        </p>
+      </div>
+    </div>
+  </.tile>
+
   <.tile docs="login-management">
     <:title>
       <a id="user-sessions">Login management</a>

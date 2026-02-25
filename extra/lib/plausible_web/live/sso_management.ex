@@ -251,6 +251,35 @@ defmodule PlausibleWeb.Live.SSOManagement do
           Use the following parameters when configuring your Identity Provider of choice:
         </p>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total SSO Users</p>
+            <p class="text-2xl font-semibold mt-1">{@sso_metrics.total_sso_users}</p>
+          </div>
+
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Active Sessions</p>
+            <p class="text-2xl font-semibold mt-1">{@sso_metrics.active_sessions}</p>
+          </div>
+
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Logins (7 days)</p>
+            <p class="text-2xl font-semibold mt-1">{@sso_metrics.last_7_days_logins}</p>
+          </div>
+
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Logins (30 days)</p>
+            <p class="text-2xl font-semibold mt-1">{@sso_metrics.last_30_days_logins}</p>
+          </div>
+        </div>
+
+        <p :if={@sso_metrics.last_login} class="text-sm text-gray-500 dark:text-gray-400">
+          Last SSO login: {Calendar.strftime(@sso_metrics.last_login, "%b %-d, %Y at %H:%M UTC")}
+        </p>
+        <p :if={!@sso_metrics.last_login} class="text-sm text-gray-500 dark:text-gray-400">
+          No SSO logins recorded yet.
+        </p>
+
         <form id="sso-sp-config" for={} class="flex-col space-y-4">
           <.input_with_clipboard
             id="sp-acs-url"
@@ -718,12 +747,15 @@ defmodule PlausibleWeb.Live.SSOManagement do
         {domain.identifier, prevent_delete_reason}
       end)
 
+    metrics = SSO.get_metrics(team)
+
     socket
     |> assign(:domain_delete_checks, domain_delete_checks)
     |> assign(:can_toggle_force_sso?, can_toggle_force_sso?)
     |> assign(:force_sso_warning, toggle_disabled_reason)
     |> assign(:policy_changeset, policy_changeset)
     |> assign(:role_options, role_options)
+    |> assign(:sso_metrics, metrics)
   end
 
   defp load(socket, _) do
