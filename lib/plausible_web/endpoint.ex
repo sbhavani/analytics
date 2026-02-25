@@ -31,6 +31,11 @@ defmodule PlausibleWeb.Endpoint do
     ]
   )
 
+  # GraphQL socket for subscriptions (future use)
+  socket "/graphql", Absinthe.Phoenix.Socket,
+    websocket: [check_origin: true],
+    longpoll: false
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phx.digest
