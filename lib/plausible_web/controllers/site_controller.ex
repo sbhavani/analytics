@@ -525,6 +525,162 @@ defmodule PlausibleWeb.SiteController do
     |> redirect(to: Routes.site_path(conn, :settings_email_reports, site.domain))
   end
 
+  # Webhook actions
+
+  def settings_webhooks(conn, _params) do
+    site = conn.assigns.site
+    webhooks = Plausible.Webhook.list_webhooks_for_site(site)
+
+    render(conn, "settings_webhooks.html",
+      site: site,
+      webhooks: webhooks,
+      webhooks_empty: webhooks == [],
+      layout: {PlausibleWeb.LayoutView, "site_settings.html"}
+    )
+  end
+
+  def create_webhook(conn, %{"webhook" => webhook_params}) do
+    site = conn.assigns.site
+
+    case Plausible.Webhook.create_webhook(site, webhook_params) do
+      {:ok, webhook} ->
+        # Create default triggers
+        Plausible.Webhook.add_trigger(webhook, %{trigger_type: "goal_completion", enabled: true})
+        Plausible.Webhook.add_trigger(webhook, %{trigger_type: "visitor_spike", enabled: false, threshold: 100})
+
+        conn
+        |> put_flash(:success, "Webhook created successfully")
+        |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+
+      {:error, changeset} ->
+        webhooks = Plausible.Webhook.list_webhooks_for_site(site)
+
+        conn
+        |> put_flash(:error, "Failed to create webhook: #{error_message(changeset)}")
+        |> render("settings_webhooks.html",
+          site: site,
+          webhooks: webhooks,
+          webhooks_empty: webhooks == []
+        )
+    end
+  end
+
+  def update_webhook(conn, %{"id" => webhook_id, "webhook" => webhook_params}) do
+    site = conn.assigns.site
+
+    webhook = Plausible.Webhook.get_webhook(site, webhook_id)
+
+    if webhook do
+      case Plausible.Webhook.update_webhook(webhook, webhook_params) do
+        {:ok, _} ->
+          conn
+          |> put_flash(:success, "Webhook updated successfully")
+          |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+
+        {:error, changeset} ->
+          conn
+          |> put_flash(:error, "Failed to update webhook: #{error_message(changeset)}")
+          |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+      end
+    else
+      conn
+      |> put_flash(:error, "Webhook not found")
+      |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+    end
+  end
+
+  def delete_webhook(conn, %{"id" => webhook_id}) do
+    site = conn.assigns.site
+
+    webhook = Plausible.Webhook.get_webhook(site, webhook_id)
+
+    if webhook do
+      case Plausible.Webhook.delete_webhook(webhook) do
+        {:ok, _} ->
+          conn
+          |> put_flash(:success, "Webhook deleted successfully")
+          |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+
+        {:error, _} ->
+          conn
+          |> put_flash(:error, "Failed to delete webhook")
+          |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+      end
+    else
+      conn
+      |> put_flash(:error, "Webhook not found")
+      |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+    end
+  end
+
+  def test_webhook(conn, %{"id" => webhook_id}) do
+    site = conn.assigns.site
+
+    webhook = Plausible.Webhook.get_webhook(site, webhook_id)
+
+    if webhook && webhook.enabled do
+      payload = Plausible.Webhook.build_test_payload(site, webhook)
+
+      case Plausible.Webhook.queue_delivery(webhook, "test", payload) do
+        {:ok, _} ->
+          conn
+          |> put_flash(:success, "Test webhook sent successfully")
+          |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+
+        {:error, _} ->
+          conn
+          |> put_flash(:error, "Failed to queue test webhook")
+          |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+      end
+    else
+      conn
+      |> put_flash(:error, "Webhook not found or disabled")
+      |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+    end
+  end
+
+  def update_webhook_trigger(conn, %{"webhook_id" => webhook_id, "trigger_id" => trigger_id, "trigger" => trigger_params}) do
+    site = conn.assigns.site
+
+    webhook = Plausible.Webhook.get_webhook(site, webhook_id)
+
+    if webhook do
+      trigger = Enum.find(webhook.triggers, &(&1.id == trigger_id))
+
+      if trigger do
+        case Plausible.Webhook.update_trigger(trigger, trigger_params) do
+          {:ok, _} ->
+            conn
+            |> put_flash(:success, "Trigger updated successfully")
+            |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+
+          {:error, changeset} ->
+            conn
+            |> put_flash(:error, "Failed to update trigger: #{error_message(changeset)}")
+            |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+        end
+      else
+        conn
+        |> put_flash(:error, "Trigger not found")
+        |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+      end
+    else
+      conn
+      |> put_flash(:error, "Webhook not found")
+      |> redirect(to: Routes.site_path(conn, :settings_webhooks, site.domain))
+    end
+  end
+
+  defp error_message(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+      Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
+        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
+      end)
+    end)
+    |> Enum.map(fn {field, errors} -> "#{field}: #{Enum.join(errors, ", ")}" end)
+    |> Enum.join("; ")
+  end
+
   def forget_import(conn, %{"import_id" => import_id}) do
     site = conn.assigns.site
 
