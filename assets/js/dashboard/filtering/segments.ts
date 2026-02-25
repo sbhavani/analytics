@@ -266,3 +266,170 @@ export function findAppliedSegmentFilter({ filters }: { filters: Filter[] }) {
   }
   return segmentFilter
 }
+
+// =============================================================================
+// Advanced Filter Builder Types
+// =============================================================================
+
+/** Filter operator types for the advanced filter builder */
+export type FilterOperatorType = 'is' | 'is_not' | 'contains' | 'contains_not'
+
+/** A single filter condition in the advanced filter builder */
+export type FilterCondition = {
+  id: string
+  dimension: string
+  operator: FilterOperatorType
+  value: string[]
+}
+
+/** Logic type for combining conditions or groups */
+export type FilterLogic = 'AND' | 'OR'
+
+/** A condition group that can contain conditions or nested groups */
+export type ConditionGroup = {
+  id: string
+  logic: FilterLogic
+  children: FilterItem[]
+  depth: number
+}
+
+/** Union type for filter items (conditions or groups) */
+export type FilterItem = FilterCondition | ConditionGroup
+
+/** Root filter structure for advanced filter builder */
+export type AdvancedFilter = {
+  items: FilterItem[]
+}
+
+/** Validation result for filter structure */
+export type FilterValidationResult = {
+  valid: boolean
+  errors: string[]
+}
+
+/** Maximum nesting depth for condition groups */
+export const MAX_FILTER_DEPTH = 3
+
+/**
+ * Creates a new filter condition with default values
+ */
+export function createFilterCondition(overrides?: Partial<FilterCondition>): FilterCondition {
+  return {
+    id: crypto.randomUUID(),
+    dimension: '',
+    operator: 'is',
+    value: [],
+    ...overrides
+  }
+}
+
+/**
+ * Creates a new condition group with default values
+ */
+export function createConditionGroup(
+  depth: number = 1,
+  overrides?: Partial<ConditionGroup>
+): ConditionGroup {
+  return {
+    id: crypto.randomUUID(),
+    logic: 'AND',
+    children: [],
+    depth,
+    ...overrides
+  }
+}
+
+/**
+ * Validates a filter condition
+ */
+export function validateFilterCondition(condition: FilterCondition): string[] {
+  const errors: string[] = []
+
+  if (!condition.dimension) {
+    errors.push('Dimension is required')
+  }
+
+  if (!condition.operator) {
+    errors.push('Operator is required')
+  }
+
+  if (!condition.value || condition.value.length === 0) {
+    errors.push('At least one value is required')
+  }
+
+  return errors
+}
+
+/**
+ * Validates the depth of nested condition groups
+ */
+export function validateFilterDepth(group: ConditionGroup): string[] {
+  const errors: string[] = []
+
+  if (group.depth > MAX_FILTER_DEPTH) {
+    errors.push(`Maximum nesting depth of ${MAX_FILTER_DEPTH} exceeded`)
+  }
+
+  for (const child of group.children) {
+    if ('children' in child) {
+      errors.push(...validateFilterDepth(child))
+    }
+  }
+
+  return errors
+}
+
+/**
+ * Validates the entire filter structure
+ */
+export function validateAdvancedFilter(filter: AdvancedFilter): FilterValidationResult {
+  const errors: string[] = []
+
+  if (!filter.items || filter.items.length === 0) {
+    errors.push('At least one filter condition is required')
+  }
+
+  for (const item of filter.items) {
+    if ('children' in item) {
+      errors.push(...validateFilterDepth(item))
+    } else {
+      errors.push(...validateFilterCondition(item))
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  }
+}
+
+/**
+ * Converts advanced filter to legacy filter format for API compatibility
+ */
+export function advancedFilterToLegacyFilters(filter: AdvancedFilter): Filter[] {
+  const result: Filter[] = []
+
+  function processItem(item: FilterItem): Filter[] {
+    if ('children' in item) {
+      // It's a group - process children based on logic
+      const childFilters = item.children.flatMap(processItem)
+      if (childFilters.length === 0) return []
+
+      if (item.logic === 'OR') {
+        return [['or', childFilters] as Filter]
+      } else {
+        // AND logic - flatten
+        return childFilters
+      }
+    } else {
+      // It's a condition
+      return [[item.operator, item.dimension, item.value] as Filter]
+    }
+  }
+
+  for (const item of filter.items) {
+    result.push(...processItem(item))
+  }
+
+  return result
+}
