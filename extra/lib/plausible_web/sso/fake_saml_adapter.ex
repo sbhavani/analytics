@@ -71,4 +71,113 @@ defmodule PlausibleWeb.SSO.FakeSAMLAdapter do
     |> Enum.take(2)
     |> Enum.map_join(" ", &String.capitalize/1)
   end
+
+  @doc """
+  Generates SP (Service Provider) metadata XML for a given integration.
+  This metadata is used by Identity Providers to configure the SAML connection.
+  """
+  @spec generate_sp_metadata(SSO.Integration.t()) :: String.t()
+  def generate_sp_metadata(integration) do
+    entity_id = SSO.SAMLConfig.entity_id(integration)
+    acs_url = acs_url(integration)
+
+    XmlBuilder.generate({
+      :"md:EntityDescriptor",
+      [
+        "xmlns:md": "urn:oasis:names:tc:SAML:2.0:metadata",
+        entityID: entity_id
+      ],
+      {
+        :"md:SPSSODescriptor",
+        [
+          "xmlns:saml": "urn:oasis:names:tc:SAML:2.0:assertion",
+          "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
+          AuthnRequestsSigned: "false",
+          WantAssertionsSigned: "true",
+          ProtocolSupportEnumeration: "urn:oasis:names:tc:SAML:2.0:protocol"
+        ],
+        [
+          {
+            :"md:NameIDFormat",
+            nil,
+            "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
+          },
+          {
+            :"md:AssertionConsumerService",
+            [
+              Binding: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
+              Location: acs_url,
+              index: 0,
+              isDefault: "true"
+            ],
+            nil
+          }
+        ]
+      }
+    })
+  end
+
+  defp acs_url(integration) do
+    PlausibleWeb.Endpoint.url() <>
+      "/sso/saml/consume/" <> integration.identifier
+  end
+
+  @doc """
+  Tests the SAML integration configuration.
+  Validates that the IdP URL and certificate are accessible.
+  """
+  @spec test_integration(SSO.Integration.t()) :: :ok | {:error, String.t()}
+  def test_integration(integration) do
+    config = integration.config
+
+    # Check if required fields are present
+    if config.idp_signin_url && config.idp_entity_id && config.idp_cert_pem do
+      # For fake adapter, we just validate that fields are present
+      :ok
+    else
+      {:error, "Missing required IdP configuration"}
+    end
+  end
+
+  # ===== Single Logout (SLO) Implementation =====
+
+  @doc """
+  Initiates SP-initiated Single Logout.
+
+  In the fake adapter, this just performs local logout.
+  """
+  @spec slo_initiate(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def slo_initiate(conn, %{"integration_id" => _integration_id} = params) do
+    return_to = Map.get(params, "return_to", "/")
+
+    # Fake adapter just does local logout
+    conn
+    |> PlausibleWeb.UserAuth.log_out_user()
+    |> Phoenix.Controller.redirect(to: return_to)
+  end
+
+  @doc """
+  Handles the LogoutResponse from IdP after SP-initiated SLO.
+  """
+  @spec slo_consume(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def slo_consume(conn, %{"integration_id" => _integration_id} = params) do
+    return_to = Map.get(params, "return_to", "/")
+
+    conn
+    |> PlausibleWeb.UserAuth.log_out_user()
+    |> Phoenix.Controller.redirect(to: return_to)
+  end
+
+  @doc """
+  Handles IdP-initiated Single Logout (LogoutRequest from IdP).
+  """
+  @spec slo_request(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def slo_request(conn, %{"integration_id" => _integration_id} = params) do
+    # In fake adapter, just do local logout and redirect to /
+    return_to = Map.get(params, "RelayState", "/")
+
+    conn
+    |> PlausibleWeb.UserAuth.log_out_user()
+    |> Phoenix.Controller.redirect(to: return_to)
+  end
 end

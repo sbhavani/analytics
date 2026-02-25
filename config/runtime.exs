@@ -331,6 +331,16 @@ sso_saml_adapter =
     "real" -> PlausibleWeb.SSO.RealSAMLAdapter
   end
 
+# SAML Service Provider (SP) configuration
+# Entity ID: Unique identifier for this service provider (defaults to base URL + /sso)
+saml_sp_entity_id =
+  get_var_from_path_or_env(config_dir, "SAML_SP_ENTITY_ID", nil)
+
+# Assertion Consumer Service (ACS) URL: Where IdP sends SAML responses
+# This is the endpoint that consumes SAML assertions
+saml_sp_acs_url =
+  get_var_from_path_or_env(config_dir, "SAML_SP_ACS_URL", nil)
+
 sso_verification_nameservers =
   case get_var_from_path_or_env(config_dir, "SSO_VERIFICATION_NAMESERVERS") do
     nil ->
@@ -359,7 +369,9 @@ config :plausible,
   data_dir: data_dir,
   session_transfer_dir: session_transfer_dir,
   sso_saml_adapter: sso_saml_adapter,
-  sso_verification_nameservers: sso_verification_nameservers
+  sso_verification_nameservers: sso_verification_nameservers,
+  saml_sp_entity_id: saml_sp_entity_id,
+  saml_sp_acs_url: saml_sp_acs_url
 
 config :plausible, :selfhost,
   enable_email_verification: enable_email_verification,

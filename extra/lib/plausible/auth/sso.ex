@@ -545,4 +545,91 @@ defmodule Plausible.Auth.SSO do
         :ok
     end
   end
+
+  @spec get_metrics(Teams.Team.t(), integer()) :: %{
+          total_sso_users: non_neg_integer(),
+          active_sessions: non_neg_integer(),
+          last_7_days_logins: non_neg_integer(),
+          last_30_days_logins: non_neg_integer(),
+          last_login: DateTime.t() | nil
+        }
+  def get_metrics(team, days \\ 30) do
+    seven_days_ago = DateTime.utc_now() |> DateTime.add(-7, :day)
+    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-days, :day)
+
+    total_sso_users =
+      Repo.aggregate(
+        from(
+          tm in Teams.Membership,
+          inner_join: u in assoc(tm, :user),
+          where: tm.team_id == ^team.id,
+          where: tm.role != :guest,
+          where: u.type == :sso
+        ),
+        :count
+      )
+
+    active_sessions =
+      Repo.aggregate(
+        from(
+          us in Auth.UserSession,
+          inner_join: u in assoc(us, :user),
+          inner_join: tm in assoc(u, :team_memberships),
+          where: tm.team_id == ^team.id,
+          where: tm.role != :guest,
+          where: u.type == :sso,
+          where: us.timeout_at >= ^NaiveDateTime.utc_now(:second)
+        ),
+        :count
+      )
+
+    last_7_days_logins =
+      Repo.aggregate(
+        from(
+          u in Auth.User,
+          inner_join: tm in assoc(u, :team_memberships),
+          where: tm.team_id == ^team.id,
+          where: tm.role != :guest,
+          where: u.type == :sso,
+          where: u.last_sso_login >= ^seven_days_ago
+        ),
+        :count
+      )
+
+    last_30_days_logins =
+      Repo.aggregate(
+        from(
+          u in Auth.User,
+          inner_join: tm in assoc(u, :team_memberships),
+          where: tm.team_id == ^team.id,
+          where: tm.role != :guest,
+          where: u.type == :sso,
+          where: u.last_sso_login >= ^thirty_days_ago
+        ),
+        :count
+      )
+
+    last_login =
+      Repo.one(
+        from(
+          u in Auth.User,
+          inner_join: tm in assoc(u, :team_memberships),
+          where: tm.team_id == ^team.id,
+          where: tm.role != :guest,
+          where: u.type == :sso,
+          where: not is_nil(u.last_sso_login),
+          order_by: [desc: u.last_sso_login],
+          select: u.last_sso_login,
+          limit: 1
+        )
+      )
+
+    %{
+      total_sso_users: total_sso_users,
+      active_sessions: active_sessions,
+      last_7_days_logins: last_7_days_logins,
+      last_30_days_logins: last_30_days_logins,
+      last_login: last_login
+    }
+  end
 end

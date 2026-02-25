@@ -216,7 +216,13 @@ defmodule PlausibleWeb.Router do
       end
 
       post "/consume/:integration_id", SSOController, :saml_consume
+      get "/metadata/:integration_id", SSOController, :saml_metadata
       post "/csp-report", SSOController, :csp_report
+
+      # Single Logout (SLO) endpoints
+      get "/logout/:integration_id", SSOController, :saml_slo
+      post "/slo/:integration_id", SSOController, :saml_slo_consume
+      post "/slo-request/:integration_id", SSOController, :saml_slo_request
     end
   end
 
@@ -420,6 +426,18 @@ defmodule PlausibleWeb.Router do
       put "/:domain/disable-feature", Api.InternalController, :disable_feature
 
       get "/sites", Api.InternalController, :sites
+
+      on_ee do
+        # SSO IdP Configuration API
+        scope "/sso" do
+          get "/integrations", SSOController, :api_list_integrations
+          get "/integrations/:id", SSOController, :api_get_integration
+          post "/integrations", SSOController, :api_create_integration
+          put "/integrations/:id", SSOController, :api_update_integration
+          delete "/integrations/:id", SSOController, :api_delete_integration
+          post "/integrations/:id/test", SSOController, :api_test_integration
+        end
+      end
     end
   end
 

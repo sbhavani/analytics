@@ -377,27 +377,42 @@ defmodule PlausibleWeb.SettingsController do
   end
 
   defp render_security(conn, opts \\ []) do
-    user_sessions = Auth.UserSessions.list_for_user(conn.assigns.current_user)
+    current_user = conn.assigns.current_user |> Repo.preload([:sso_integration, :sso_domain])
+
+    user_sessions = Auth.UserSessions.list_for_user(current_user)
 
     email_changeset =
       Keyword.get(
         opts,
         :email_changeset,
-        Auth.User.email_changeset(conn.assigns.current_user, %{email: ""})
+        Auth.User.email_changeset(current_user, %{email: ""})
       )
 
     password_changeset =
       Keyword.get(
         opts,
         :password_changeset,
-        Auth.User.password_changeset(conn.assigns.current_user)
+        Auth.User.password_changeset(current_user)
       )
 
+    sso_info =
+      if current_user.type == :sso do
+        %{
+          is_sso_user: true,
+          integration_name: current_user.sso_integration && current_user.sso_integration.config && current_user.sso_integration.config.idp_entity_id,
+          last_sso_login: current_user.last_sso_login
+        }
+      else
+        %{is_sso_user: false}
+      end
+
     render(conn, :security,
-      totp_enabled?: Auth.TOTP.enabled?(conn.assigns.current_user),
+      current_user: current_user,
+      totp_enabled?: Auth.TOTP.enabled?(current_user),
       user_sessions: user_sessions,
       email_changeset: email_changeset,
       password_changeset: password_changeset,
+      sso_info: sso_info,
       layout: {PlausibleWeb.LayoutView, :settings}
     )
   end
