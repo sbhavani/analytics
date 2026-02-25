@@ -104,7 +104,6 @@ export default function MetricValue(props: {
           change={comparison.change}
           metric={metric}
           className="inline-block pl-1 w-4"
-          hideNumber
         />
       ) : null}
     </span>

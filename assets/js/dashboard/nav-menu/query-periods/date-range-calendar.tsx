@@ -6,6 +6,7 @@ export interface DateRangeCalendarProps {
   minDate?: string
   maxDate?: string
   defaultDates?: [string, string]
+  mode?: 'main' | 'comparison'
   onCloseWithNoSelection?: () => void
   onCloseWithSelection?: ([selectionStart, selectionEnd]: [Date, Date]) => void
 }
@@ -15,6 +16,7 @@ export function DateRangeCalendar({
   minDate,
   maxDate,
   defaultDates,
+  mode,
   onCloseWithNoSelection,
   onCloseWithSelection
 }: DateRangeCalendarProps) {
@@ -31,34 +33,41 @@ export function DateRangeCalendar({
     )
   }, [])
   return (
-    <DatePicker
-      ref={calendarRef}
-      className={hideInputFieldClassName}
-      id={id}
-      options={{
-        animate: false,
-        inline: true,
-        mode: 'range',
-        maxDate,
-        minDate,
-        defaultDate: defaultDates,
-        showMonths: 1
-      }}
-      onClose={
-        onCloseWithSelection || onCloseWithNoSelection
-          ? ([selectionStart, selectionEnd]) => {
-              if (selectionStart && selectionEnd) {
-                if (onCloseWithSelection) {
-                  onCloseWithSelection([selectionStart, selectionEnd])
-                }
-              } else {
-                if (onCloseWithNoSelection) {
-                  onCloseWithNoSelection()
+    <div>
+      {mode === 'comparison' && (
+        <div className="text-xs font-semibold text-gray-500 px-3 py-2 border-b border-gray-100">
+          Select comparison period
+        </div>
+      )}
+      <DatePicker
+        ref={calendarRef}
+        className={hideInputFieldClassName}
+        id={id}
+        options={{
+          animate: false,
+          inline: true,
+          mode: 'range',
+          maxDate,
+          minDate,
+          defaultDate: defaultDates,
+          showMonths: 1
+        }}
+        onClose={
+          onCloseWithSelection || onCloseWithNoSelection
+            ? ([selectionStart, selectionEnd]) => {
+                if (selectionStart && selectionEnd) {
+                  if (onCloseWithSelection) {
+                    onCloseWithSelection([selectionStart, selectionEnd])
+                  }
+                } else {
+                  if (onCloseWithNoSelection) {
+                    onCloseWithNoSelection()
+                  }
                 }
               }
-            }
-          : undefined
-      }
-    />
+            : undefined
+        }
+      />
+    </div>
   )
 }

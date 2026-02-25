@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import classNames from 'classnames'
 import { useDashboardStateContext } from '../../dashboard-state-context'
-import { isComparisonEnabled } from '../../dashboard-time-periods'
+import { isComparisonEnabled, periodsHaveDifferentLengths } from '../../dashboard-time-periods'
 import { MovePeriodArrows } from './move-period-arrows'
 import { MainCalendar, DashboardPeriodMenu } from './dashboard-period-menu'
 import {
@@ -9,10 +9,12 @@ import {
   ComparisonPeriodMenu
 } from './comparison-period-menu'
 import { Popover } from '@headlessui/react'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/solid'
 
 export function DashboardPeriodPicker({ className }: { className?: string }) {
   const { dashboardState } = useDashboardStateContext()
   const isComparing = isComparisonEnabled(dashboardState.comparison)
+  const showLengthWarning = periodsHaveDifferentLengths(dashboardState)
   const mainCalendarButtonRef = useRef<HTMLButtonElement>(null)
   const compareCalendarButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -56,6 +58,12 @@ export function DashboardPeriodPicker({ className }: { className?: string }) {
               />
             )}
           </Popover>
+          {showLengthWarning && (
+            <div className="flex items-center ml-2 text-amber-600 dark:text-amber-500 text-xs" title="Periods have different lengths - comparison may be misleading">
+              <ExclamationTriangleIcon className="size-4 mr-1" />
+              <span className="hidden sm:inline">Different lengths</span>
+            </div>
+          )}
         </>
       )}
     </div>

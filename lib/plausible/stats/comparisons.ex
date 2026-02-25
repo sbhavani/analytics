@@ -186,6 +186,41 @@ defmodule Plausible.Stats.Comparisons do
     Date.range(from_date, to_date)
   end
 
+  # Predefined comparison modes: this_week_vs_last_week
+  defp get_comparison_date_range(%Query{include: %{compare: :this_week_vs_last_week}}) do
+    today = Date.utc_today()
+    # This week: Monday of current week to Sunday of current week
+    this_week_start = Date.beginning_of_week(today, :monday)
+    this_week_end = Date.end_of_week(today, :monday)
+    # Last week: Monday of previous week to Sunday of previous week
+    last_week_start = Date.add(this_week_start, -7)
+    last_week_end = Date.add(this_week_end, -7)
+    Date.range(last_week_start, last_week_end)
+  end
+
+  # Predefined comparison modes: this_month_vs_last_month
+  defp get_comparison_date_range(%Query{include: %{compare: :this_month_vs_last_month}}) do
+    today = Date.utc_today()
+    # This month
+    this_month_start = Date.beginning_of_month(today)
+    this_month_end = Date.end_of_month(today)
+    # Last month
+    last_month_start = Date.add(this_month_start, -1)
+    last_month_end = Date.end_of_month(last_month_start)
+    Date.range(last_month_start, last_month_end)
+  end
+
+  # Predefined comparison modes: last_7_days_vs_previous_7_days
+  defp get_comparison_date_range(%Query{include: %{compare: :last_7_days_vs_previous_7_days}}) do
+    today = Date.utc_today()
+    # Last 7 days: today - 6 to today (7 days including today)
+    last_7_days_start = Date.add(today, -6)
+    # Previous 7 days: today - 13 to today - 7
+    previous_7_days_start = Date.add(today, -13)
+    previous_7_days_end = Date.add(today, -7)
+    Date.range(previous_7_days_start, previous_7_days_end)
+  end
+
   defp maybe_match_day_of_week(comparison_date_range, source_date_range, source_query) do
     if source_query.include.compare_match_day_of_week do
       day_to_match = Date.day_of_week(source_date_range.first)
@@ -229,5 +264,42 @@ defmodule Plausible.Stats.Comparisons do
     days_to_subtract = if days_to_subtract > 0, do: days_to_subtract, else: days_to_subtract + 7
 
     Date.add(date, -days_to_subtract)
+  end
+
+  @doc """
+  Compares the length of the main query period with the comparison period.
+
+  Returns a map with:
+    - `:same_length`: boolean - true if both periods have the same number of days
+    - `:main_period_days`: integer - number of days in the main period
+    - `:comparison_period_days`: integer - number of days in the comparison period
+
+  This is used to warn users when comparing periods of different lengths (FR-009).
+  """
+  @spec compare_period_lengths(Stats.Query.t()) :: %{
+          same_length: boolean(),
+          main_period_days: non_neg_integer(),
+          comparison_period_days: non_neg_integer()
+        }
+  def compare_period_lengths(%Stats.Query{} = source_query) do
+    main_date_range = Query.date_range(source_query, trim_trailing: true)
+    main_period_days = Date.diff(main_date_range.last, main_date_range.first) + 1
+
+    # Handle both date ranges and datetime ranges (24h periods)
+    comparison_period_days =
+      if source_query.input_date_range == :"24h" do
+        comparison_datetime_range = get_comparison_datetime_range(source_query)
+        DateTime.diff(comparison_datetime_range.last, comparison_datetime_range.first, :day)
+        |> Kernel.+(1)
+      else
+        comparison_date_range = get_comparison_date_range(source_query)
+        Date.diff(comparison_date_range.last, comparison_date_range.first) + 1
+      end
+
+    %{
+      same_length: main_period_days == comparison_period_days,
+      main_period_days: main_period_days,
+      comparison_period_days: comparison_period_days
+    }
   end
 end

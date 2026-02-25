@@ -32,8 +32,12 @@ defmodule Plausible.Stats.Compare do
       old_count == 0 and new_count == 0 ->
         0
 
+      old_count == 0 and new_count < 0 ->
+        -100
+
       true ->
-        round((new_count - old_count) / old_count * 100)
+        # Use abs() to handle negative old_count values correctly
+        round((new_count - old_count) / abs(old_count) * 100)
     end
   end
 end
