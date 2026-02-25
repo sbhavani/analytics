@@ -1,0 +1,338 @@
+# GraphQL Analytics API - Schema Contract
+
+This file defines the public GraphQL schema contract for the Analytics API.
+
+## Schema Definition (SDL)
+
+```graphql
+scalar DateTime
+scalar JSON
+
+# Enums
+enum TimeInterval {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+}
+
+enum AggregationType {
+  COUNT
+  SUM
+  AVERAGE
+  MIN
+  MAX
+}
+
+# Input Types
+input DateRangeInput {
+  from: String!
+  to: String!
+}
+
+input PageviewFilter {
+  urlPattern: String
+  title: String
+}
+
+input EventFilter {
+  name: String
+  category: String
+}
+
+input AggregationInput {
+  type: AggregationType!
+  metric: String!
+  groupBy: String
+}
+
+input PaginationInput {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+input SortInput {
+  field: String!
+  order: SortOrder
+}
+
+enum SortOrder {
+  ASC
+  DESC
+}
+
+# Core Types
+type Pageview {
+  url: String!
+  title: String
+  visitors: Int!
+  viewsPerVisit: Float
+  bounceRate: Float
+  timestamp: DateTime!
+}
+
+type Event {
+  name: String!
+  category: String
+  timestamp: DateTime!
+  properties: JSON
+  visitors: Int!
+  events: Int!
+}
+
+type CustomMetric {
+  name: String!
+  value: Float!
+  previousValue: Float
+  change: Float
+  historicalValues: [MetricDataPoint!]
+}
+
+type MetricDataPoint {
+  timestamp: DateTime!
+  value: Float!
+}
+
+# Connection Types (Relay)
+type PageviewConnection {
+  edges: [PageviewEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PageviewEdge {
+  node: Pageview!
+  cursor: String!
+}
+
+type EventConnection {
+  edges: [EventEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type EventEdge {
+  node: Event!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# Response Types
+type AggregateResult {
+  visitors: Int
+  pageviews: Int
+  events: Int
+  bounceRate: Float
+  visitDuration: Int
+  viewsPerVisit: Float
+}
+
+type TimeseriesResult {
+  interval: TimeInterval!
+  data: [TimeseriesDataPoint!]!
+}
+
+type TimeseriesDataPoint {
+  date: String!
+  visitors: Int
+  pageviews: Int
+  events: Int
+}
+
+# Root Query
+type Query {
+  # Pageview queries
+  pageviews(
+    siteId: String!,
+    dateRange: DateRangeInput!,
+    filter: PageviewFilter,
+    pagination: PaginationInput,
+    sort: [SortInput!]
+  ): PageviewConnection!
+
+  # Event queries
+  events(
+    siteId: String!,
+    dateRange: DateRangeInput!,
+    filter: EventFilter,
+    pagination: PaginationInput
+  ): EventConnection!
+
+  # Custom metrics queries
+  customMetrics(
+    siteId: String!,
+    dateInput
+  ):Range: DateRange [CustomMetric!]!
+
+  # Aggregation queries
+  aggregate(
+    siteId: String!,
+    dateRange: DateRangeInput!,
+    metrics: [String!]!,
+    filter: EventFilter
+  ): AggregateResult!
+
+  # Time series
+  timeseries(
+    siteId: String!,
+    dateRange: DateRangeInput!,
+    metrics: [String!]!,
+    interval: TimeInterval
+  ): TimeseriesResult!
+}
+```
+
+---
+
+## Example Queries
+
+### Query Pageviews
+
+```graphql
+query {
+  pageviews(
+    siteId: "example.com",
+    dateRange: { from: "2024-01-01", to: "2024-01-31" },
+    pagination: { first: 20 }
+  ) {
+    edges {
+      node {
+        url
+        title
+        visitors
+        timestamp
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+```
+
+### Query Events
+
+```graphql
+query {
+  events(
+    siteId: "example.com",
+    dateRange: { from: "2024-01-01", to: "2024-01-31" },
+    filter: { category: "engagement" }
+  ) {
+    edges {
+      node {
+        name
+        category
+        timestamp
+        properties
+        visitors
+      }
+    }
+  }
+}
+```
+
+### Aggregate Metrics
+
+```graphql
+query {
+  aggregate(
+    siteId: "example.com",
+    dateRange: { from: "2024-01-01", to: "2024-01-31" },
+    metrics: ["visitors", "pageviews", "bounce_rate"]
+  ) {
+    visitors
+    pageviews
+    bounceRate
+  }
+}
+```
+
+### Timeseries Data
+
+```graphql
+query {
+  timeseries(
+    siteId: "example.com",
+    dateRange: { from: "2024-01-01", to: "2024-01-31" },
+    metrics: ["visitors", "pageviews"],
+    interval: DAY
+  ) {
+    interval
+    data {
+      date
+      visitors
+      pageviews
+    }
+  }
+}
+```
+
+---
+
+## HTTP Endpoint
+
+```
+POST /api/graphql
+Content-Type: application/json
+
+{
+  "query": "...",
+  "variables": { ... },
+  "operationName": "..."
+}
+```
+
+---
+
+## Authentication
+
+The API requires authentication via API key passed in the header:
+
+```
+Authorization: Bearer <api_key>
+```
+
+---
+
+## Error Responses
+
+### Validation Error
+
+```json
+{
+  "errors": [
+    {
+      "message": "Invalid date range",
+      "locations": [{ "line": 2, "column": 3 }],
+      "path": ["pageviews", "dateRange"]
+    }
+  ]
+}
+```
+
+### Not Found (Empty Data)
+
+```json
+{
+  "data": {
+    "pageviews": {
+      "edges": [],
+      "pageInfo": { "hasNextPage": false },
+      "totalCount": 0
+    }
+  }
+}
+```

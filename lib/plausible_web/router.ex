@@ -343,6 +343,12 @@ defmodule PlausibleWeb.Router do
     post "/query", ExternalQueryApiController, :query
   end
 
+  scope "/api/graphql", PlausibleWeb.GraphQL do
+    pipe_through [:public_api]
+
+    forward "/", Absinthe.Plug, schema: PlausibleWeb.GraphQL.Schema
+  end
+
   scope "/api/docs", PlausibleWeb.Api do
     get "/query/schema.json", ExternalQueryApiController, :schema
 
