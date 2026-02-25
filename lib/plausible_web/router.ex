@@ -389,6 +389,13 @@ defmodule PlausibleWeb.Router do
           put "/guests", ExternalSitesController, :find_or_create_guest
           delete "/guests/:email", ExternalSitesController, :delete_guest
 
+          # Webhooks
+          get "/:site_id/webhooks", Api.WebhookController, :index
+          post "/:site_id/webhooks", Api.WebhookController, :create
+          patch "/:site_id/webhooks/:id", Api.WebhookController, :update
+          delete "/:site_id/webhooks/:id", Api.WebhookController, :delete
+          get "/:site_id/webhooks/:id/deliveries", Api.WebhookController, :deliveries
+
           put "/:site_id", ExternalSitesController, :update_site
           delete "/:site_id", ExternalSitesController, :delete_site
         end
@@ -629,6 +636,7 @@ defmodule PlausibleWeb.Router do
 
     get "/:domain/settings/danger-zone", SiteController, :settings_danger_zone
     get "/:domain/settings/integrations", SiteController, :settings_integrations
+    get "/:domain/settings/webhooks", SiteController, :settings_webhooks
     get "/:domain/settings/shields/:shield", SiteController, :settings_shields
     get "/:domain/settings/imports-exports", SiteController, :settings_imports_exports
 
