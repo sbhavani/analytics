@@ -30,6 +30,19 @@ defmodule PlausibleWeb.Components.Layout do
     <script blocking="rendering">
       (function(){
         var themePref = '<%= theme_preference(assigns) %>';
+
+        // For anonymous users (system default), check localStorage
+        if (themePref === 'system') {
+          try {
+            var storedTheme = localStorage.getItem('theme_preference');
+            if (storedTheme === 'light' || storedTheme === 'dark') {
+              themePref = storedTheme;
+            }
+          } catch (e) {
+            // localStorage unavailable, use system preference
+          }
+        }
+
         function reapplyTheme() {
           var darkMediaPref = window.matchMedia('(prefers-color-scheme: dark)').matches;
           var htmlRef = document.querySelector('html');
@@ -44,6 +57,26 @@ defmodule PlausibleWeb.Components.Layout do
               htmlRef.classList.remove('dark');
               hcaptchaRefs.forEach(function(ref) { ref.dataset.theme = "light"; });
           }
+
+          // Update toggle icons
+          updateThemeIcons(isDark);
+        }
+
+        function updateThemeIcons(isDark) {
+          var buttons = document.querySelectorAll('#theme-toggle, [aria-label="Toggle dark mode"]');
+          buttons.forEach(function(button) {
+            var sunIcon = button.querySelector('.sun-icon');
+            var moonIcon = button.querySelector('.moon-icon');
+            if (sunIcon && moonIcon) {
+              if (isDark) {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+              } else {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+              }
+            }
+          });
         }
 
         reapplyTheme();

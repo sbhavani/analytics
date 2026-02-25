@@ -98,6 +98,105 @@ function showChangelogNotification(el) {
   }
 }
 
+// Theme toggle functionality
+function getCurrentTheme() {
+  const html = document.querySelector('html')
+  return html?.classList.contains('dark') ? 'dark' : 'light'
+}
+
+function updateThemeIcons(isDark) {
+  const buttons = document.querySelectorAll('#theme-toggle, [aria-label="Toggle dark mode"]')
+  buttons.forEach((button) => {
+    const sunIcon = button.querySelector('.sun-icon')
+    const moonIcon = button.querySelector('.moon-icon')
+    if (sunIcon && moonIcon) {
+      if (isDark) {
+        sunIcon.classList.remove('hidden')
+        moonIcon.classList.add('hidden')
+      } else {
+        sunIcon.classList.add('hidden')
+        moonIcon.classList.remove('hidden')
+      }
+    }
+  })
+}
+
+async function saveThemePreference(theme) {
+  // Check if user is logged in by looking for csrf-token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')
+
+  if (csrfToken) {
+    // User is logged in, save to server
+    try {
+      await fetch('/settings/preferences/theme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': csrfToken.getAttribute('content'),
+        },
+        body: `user[theme]=${theme}`,
+      })
+    } catch (error) {
+      console.error('Failed to save theme preference:', error)
+    }
+  } else {
+    // Anonymous user, save to localStorage
+    try {
+      localStorage.setItem('theme_preference', theme)
+    } catch (error) {
+      // localStorage might be unavailable (private browsing, etc.)
+      console.warn('Could not save theme to localStorage:', error)
+    }
+  }
+}
+
+window.toggleTheme = async function () {
+  const currentTheme = getCurrentTheme()
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light'
+  const html = document.querySelector('html')
+
+  // Apply theme
+  if (newTheme === 'dark') {
+    html?.classList.add('dark')
+  } else {
+    html?.classList.remove('dark')
+  }
+
+  // Update icons
+  updateThemeIcons(newTheme === 'dark')
+
+  // Save preference
+  await saveThemePreference(newTheme)
+}
+
+// Initialize theme on page load
+document.addEventListener('DOMContentLoaded', () => {
+  // Read theme preference for anonymous users from localStorage
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')
+  const html = document.querySelector('html')
+
+  // Only apply localStorage preference for anonymous users
+  // (authenticated users get their preference from the server)
+  if (!csrfToken && html) {
+    try {
+      const storedTheme = localStorage.getItem('theme_preference')
+      if (storedTheme === 'dark') {
+        html.classList.add('dark')
+      } else if (storedTheme === 'light') {
+        html.classList.remove('dark')
+      }
+      // If storedTheme is null or invalid, keep server-set theme (system preference)
+    } catch (error) {
+      // localStorage might be unavailable (private browsing, etc.)
+      console.warn('Could not read theme from localStorage:', error)
+    }
+  }
+
+  // Update theme icons based on current theme
+  const isDark = getCurrentTheme() === 'dark'
+  updateThemeIcons(isDark)
+})
+
 const embedButton = document.getElementById('generate-embed')
 
 if (embedButton) {
