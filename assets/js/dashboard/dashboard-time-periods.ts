@@ -20,6 +20,8 @@ import {
   lastMonth,
   nowForSite,
   parseNaiveDate,
+  shiftDays,
+  shiftMonths,
   yesterday
 } from './util/date'
 import { AppNavigationTarget } from './navigation/use-app-navigate'
@@ -45,14 +47,21 @@ export enum ComparisonMode {
   off = 'off',
   previous_period = 'previous_period',
   year_over_year = 'year_over_year',
-  custom = 'custom'
+  custom = 'custom',
+  // Predefined period comparison options
+  this_week_vs_last_week = 'this_week_vs_last_week',
+  this_month_vs_last_month = 'this_month_vs_last_month',
+  last_7_days_vs_previous_7_days = 'last_7_days_vs_previous_7_days'
 }
 
 export const COMPARISON_MODES = {
   [ComparisonMode.off]: 'Disable comparison',
   [ComparisonMode.previous_period]: 'Previous period',
   [ComparisonMode.year_over_year]: 'Year over year',
-  [ComparisonMode.custom]: 'Custom period'
+  [ComparisonMode.custom]: 'Custom period',
+  [ComparisonMode.this_week_vs_last_week]: 'This week vs last week',
+  [ComparisonMode.this_month_vs_last_month]: 'This month vs last month',
+  [ComparisonMode.last_7_days_vs_previous_7_days]: 'Last 7 days vs previous 7 days'
 }
 
 export enum ComparisonMatchMode {
@@ -161,7 +170,10 @@ export const isComparisonEnabled = function (
     [
       ComparisonMode.custom,
       ComparisonMode.previous_period,
-      ComparisonMode.year_over_year
+      ComparisonMode.year_over_year,
+      ComparisonMode.this_week_vs_last_week,
+      ComparisonMode.this_month_vs_last_month,
+      ComparisonMode.last_7_days_vs_previous_7_days
     ].includes(mode as ComparisonMode)
   ) {
     return true
@@ -242,6 +254,88 @@ export const getSearchToApplyCustomComparisonDates = ([
     comparison: ComparisonMode.custom,
     compare_from: formatISO(from),
     compare_to: formatISO(to),
+    keybindHint: null
+  })
+}
+
+// Helper to get start of week (Monday) for a Dayjs date
+function getStartOfWeek(date: ReturnType<typeof nowForSite>): ReturnType<typeof nowForSite> {
+  return date.startOf('week')
+}
+
+// Helper to get end of week (Sunday) for a Dayjs date
+function getEndOfWeek(date: ReturnType<typeof nowForSite>): ReturnType<typeof nowForSite> {
+  return date.endOf('week')
+}
+
+// Helper to get start of month for a Dayjs date
+function getStartOfMonth(date: ReturnType<typeof nowForSite>): ReturnType<typeof nowForSite> {
+  return date.startOf('month')
+}
+
+// Helper to get end of month for a Dayjs date
+function getEndOfMonth(date: ReturnType<typeof nowForSite>): ReturnType<typeof nowForSite> {
+  return date.endOf('month')
+}
+
+// Helper to apply "This Week vs Last Week" predefined comparison
+export const getSearchToApplyThisWeekVsLastWeek = (site: PlausibleSite) => {
+  const today = nowForSite(site)
+  const thisWeekStart = getStartOfWeek(today)
+  const thisWeekEnd = getEndOfWeek(today)
+  const lastWeekStart = shiftDays(thisWeekStart, -7)
+  const lastWeekEnd = shiftDays(thisWeekEnd, -7)
+
+  return (search: Record<string, unknown>) => ({
+    ...search,
+    ...clearedDateSearch,
+    period: DashboardPeriod.custom,
+    from: formatISO(thisWeekStart),
+    to: formatISO(thisWeekEnd),
+    comparison: ComparisonMode.this_week_vs_last_week,
+    compare_from: formatISO(lastWeekStart),
+    compare_to: formatISO(lastWeekEnd),
+    keybindHint: null
+  })
+}
+
+// Helper to apply "This Month vs Last Month" predefined comparison
+export const getSearchToApplyThisMonthVsLastMonth = (site: PlausibleSite) => {
+  const today = nowForSite(site)
+  const thisMonthStart = getStartOfMonth(today)
+  const thisMonthEnd = getEndOfMonth(today)
+  const lastMonthStart = shiftMonths(thisMonthStart, -1)
+  const lastMonthEnd = getEndOfMonth(lastMonthStart)
+
+  return (search: Record<string, unknown>) => ({
+    ...search,
+    ...clearedDateSearch,
+    period: DashboardPeriod.custom,
+    from: formatISO(thisMonthStart),
+    to: formatISO(thisMonthEnd),
+    comparison: ComparisonMode.this_month_vs_last_month,
+    compare_from: formatISO(lastMonthStart),
+    compare_to: formatISO(lastMonthEnd),
+    keybindHint: null
+  })
+}
+
+// Helper to apply "Last 7 Days vs Previous 7 Days" predefined comparison
+export const getSearchToApplyLast7DaysVsPrevious7Days = (site: PlausibleSite) => {
+  const today = nowForSite(site)
+  const last7DaysStart = shiftDays(today, -6)
+  const previous7DaysStart = shiftDays(today, -13)
+  const previous7DaysEnd = shiftDays(today, -7)
+
+  return (search: Record<string, unknown>) => ({
+    ...search,
+    ...clearedDateSearch,
+    period: DashboardPeriod.custom,
+    from: formatISO(last7DaysStart),
+    to: formatISO(today),
+    comparison: ComparisonMode.last_7_days_vs_previous_7_days,
+    compare_from: formatISO(previous7DaysStart),
+    compare_to: formatISO(previous7DaysEnd),
     keybindHint: null
   })
 }
@@ -696,4 +790,30 @@ export function getCurrentComparisonPeriodDisplayName({
         dashboardState.compare_to
       )
     : COMPARISON_MODES[dashboardState.comparison]
+}
+
+// Check if main period and comparison period have different lengths
+export function periodsHaveDifferentLengths(dashboardState: DashboardState): boolean {
+  if (!dashboardState.comparison || dashboardState.comparison === ComparisonMode.off) {
+    return false
+  }
+
+  // For custom comparison, check the actual date ranges
+  if (dashboardState.comparison === ComparisonMode.custom &&
+      dashboardState.from && dashboardState.to &&
+      dashboardState.compare_from && dashboardState.compare_to) {
+    const mainStart = dashboardState.from.toDate()
+    const mainEnd = dashboardState.to.toDate()
+    const compareStart = dashboardState.compare_from.toDate()
+    const compareEnd = dashboardState.compare_to.toDate()
+
+    const mainDays = Math.round((mainEnd.getTime() - mainStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const compareDays = Math.round((compareEnd.getTime() - compareStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+    return mainDays !== compareDays
+  }
+
+  // For predefined comparisons like previous_period, they should be the same length
+  // by design, so return false
+  return false
 }

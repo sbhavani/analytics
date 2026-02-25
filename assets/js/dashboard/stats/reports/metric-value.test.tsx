@@ -75,7 +75,7 @@ describe('comparisons', () => {
       [
         '10 visitors',
         '01 Aug - 31 Aug',
-        '↑ 100%',
+        '↑ +100%',
         '5 visitors',
         '01 July - 31 July'
       ].join('')
@@ -161,7 +161,7 @@ describe('comparisons', () => {
       [
         '10$ test',
         '01 Aug - 31 Aug',
-        '↑ 100%',
+        '↑ +100%',
         '5$ test',
         '01 July - 31 July'
       ].join('')

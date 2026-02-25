@@ -158,15 +158,17 @@ defmodule Plausible.Stats.Dashboard.QueryParserTest do
   end
 
   describe "comparison -> include.compare" do
-    for mode <- [:previous_period, :year_over_year] do
+    for mode <- [:previous_period, :year_over_year, :this_week_vs_last_week, :this_month_vs_last_month, :last_7_days_vs_previous_7_days] do
       test "parses #{mode} mode" do
-        {:ok, parsed} = parse("?comparison=#{unquote(mode)}", build(:site), %{})
+        mode_string = Atom.to_string(unquote(mode))
+        {:ok, parsed} = parse("?comparison=#{mode_string}", build(:site), %{})
         expected_include = Map.put(@default_include, :compare, unquote(mode))
         assert_matches %ParsedQueryParams{include: ^expected_include} = parsed
       end
 
       test "parses #{mode} mode from user prefs" do
-        {:ok, parsed} = parse("", build(:site), %{"comparison" => "#{unquote(mode)}"})
+        mode_string = Atom.to_string(unquote(mode))
+        {:ok, parsed} = parse("", build(:site), %{"comparison" => mode_string})
         expected_include = Map.put(@default_include, :compare, unquote(mode))
         assert_matches %ParsedQueryParams{include: ^expected_include} = parsed
       end
@@ -222,6 +224,80 @@ defmodule Plausible.Stats.Dashboard.QueryParserTest do
         parse("?comparison=invalid_mode", build(:site), %{"comparison" => "invalid_mode"})
 
       assert %ParsedQueryParams{include: @default_include} = parsed
+    end
+  end
+
+  describe "custom comparison date validation" do
+    test "errors when compare_from is after compare_to" do
+      assert {:error, :invalid_comparison_date_range} =
+               parse(
+                 "?comparison=custom&compare_from=2021-04-30&compare_to=2021-01-01",
+                 build(:site),
+                 %{}
+               )
+    end
+
+    test "errors when compare_from equals compare_to" do
+      assert {:error, :invalid_comparison_date_range} =
+               parse(
+                 "?comparison=custom&compare_from=2021-01-01&compare_to=2021-01-01",
+                 build(:site),
+                 %{}
+               )
+    end
+
+    test "errors when comparison period is before site native_stats_start_at" do
+      site = build(:site, native_stats_start_at: ~N[2021-06-01 00:00:00])
+
+      assert {:error, :comparison_date_before_stats_start} =
+               parse(
+                 "?comparison=custom&compare_from=2021-01-01&compare_to=2021-05-31",
+                 site,
+                 %{}
+               )
+    end
+
+    test "errors when comparison period is in the future" do
+      site = build(:site, native_stats_start_at: ~N[2020-01-01 00:00:00])
+
+      assert {:error, :comparison_date_in_future} =
+               parse(
+                 "?comparison=custom&compare_from=2099-01-01&compare_to=2099-12-31",
+                 site,
+                 %{}
+               )
+    end
+
+    test "accepts valid custom comparison date range" do
+      site = build(:site, native_stats_start_at: ~N[2020-01-01 00:00:00])
+
+      {:ok, parsed} =
+        parse(
+          "?comparison=custom&compare_from=2021-01-01&compare_to=2021-04-30",
+          site,
+          %{}
+        )
+
+      expected_include =
+        Map.put(@default_include, :compare, {:date_range, ~D[2021-01-01], ~D[2021-04-30]})
+
+      assert %ParsedQueryParams{include: ^expected_include} = parsed
+    end
+
+    test "accepts comparison period starting exactly at native_stats_start_at" do
+      site = build(:site, native_stats_start_at: ~N[2021-01-01 00:00:00])
+
+      {:ok, parsed} =
+        parse(
+          "?comparison=custom&compare_from=2021-01-01&compare_to=2021-04-30",
+          site,
+          %{}
+        )
+
+      expected_include =
+        Map.put(@default_include, :compare, {:date_range, ~D[2021-01-01], ~D[2021-04-30]})
+
+      assert %ParsedQueryParams{include: ^expected_include} = parsed
     end
   end
 

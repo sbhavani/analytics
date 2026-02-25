@@ -337,6 +337,224 @@ defmodule Plausible.Stats.ComparisonsTest do
       assert comparison_query.utc_time_range.first == ~U[2022-05-25 00:00:00Z]
       assert comparison_query.utc_time_range.last == ~U[2022-05-30 23:59:59Z]
     end
+
+    test "custom date range comparison returns correct data for 7-day period", %{site: site} do
+      # Main period: Jan 1-7, 2023 (7 days)
+      # Comparison period: Dec 25-31, 2022 (7 days)
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors, :pageviews],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-07]},
+          include: [compare: {:date_range, ~D[2022-12-25], ~D[2022-12-31]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Verify main query has correct date range
+      assert query.utc_time_range.first == ~U[2023-01-01 00:00:00Z]
+      assert query.utc_time_range.last == ~U[2023-01-07 23:59:59Z]
+
+      # Verify comparison query has the custom date range
+      assert comparison_query.utc_time_range.first == ~U[2022-12-25 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-12-31 23:59:59Z]
+
+      # Verify both periods have the same length (7 days)
+      assert date_range_length(query) == 7
+      assert date_range_length(comparison_query) == 7
+    end
+
+    test "custom date range comparison with different length periods", %{site: site} do
+      # Main period: Jan 1-15, 2023 (15 days)
+      # Comparison period: Dec 1-31, 2022 (31 days) - different length
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-15]},
+          include: [compare: {:date_range, ~D[2022-12-01], ~D[2022-12-31]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Verify comparison query uses the exact custom dates provided
+      assert comparison_query.utc_time_range.first == ~U[2022-12-01 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-12-31 23:59:59Z]
+
+      # Main period is 15 days, comparison is 31 days
+      assert date_range_length(query) == 15
+      assert date_range_length(comparison_query) == 31
+    end
+
+    test "custom date range comparison with single day period", %{site: site} do
+      # Main period: single day
+      # Comparison period: different single day
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-06-15], ~D[2023-06-15]},
+          include: [compare: {:date_range, ~D[2023-06-01], ~D[2023-06-01]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      assert comparison_query.utc_time_range.first == ~U[2023-06-01 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2023-06-01 23:59:59Z]
+    end
+
+    test "custom date range comparison works with custom main period", %{site: site} do
+      # Custom main period: Feb 14-20, 2023 (Valentine's week)
+      # Custom comparison: Feb 7-13, 2023 (week before)
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors, :pageviews, :bounce_rate],
+          input_date_range: {:date_range, ~D[2023-02-14], ~D[2023-02-20]},
+          include: [compare: {:date_range, ~D[2023-02-07], ~D[2023-02-13]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Main period dates
+      assert query.utc_time_range.first == ~U[2023-02-14 00:00:00Z]
+      assert query.utc_time_range.last == ~U[2023-02-20 23:59:59Z]
+
+      # Comparison period dates (the custom dates)
+      assert comparison_query.utc_time_range.first == ~U[2023-02-07 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2023-02-13 23:59:59Z]
+
+      # Both should be 7 days
+      assert date_range_length(query) == 7
+      assert date_range_length(comparison_query) == 7
+    end
+
+    test "custom date range comparison ignores match_day_of_week option", %{site: site} do
+      # Custom date ranges should not be affected by match_day_of_week
+      # because the user explicitly specified the dates
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-07]},
+          include: [
+            compare: {:date_range, ~D[2022-12-25], ~D[2022-12-31]},
+            compare_match_day_of_week: true
+          ]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Should use exact custom dates, not adjusted for day of week
+      assert comparison_query.utc_time_range.first == ~U[2022-12-25 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-12-31 23:59:59Z]
+    end
+
+    test "custom date range comparison with month-spanning dates", %{site: site} do
+      # Main period: Dec 15, 2022 - Jan 15, 2023 (spans month boundary)
+      # Comparison period: Nov 15 - Dec 15, 2022 (similar length)
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2022-12-15], ~D[2023-01-15]},
+          include: [compare: {:date_range, ~D[2022-11-15], ~D[2022-12-15]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      assert comparison_query.utc_time_range.first == ~U[2022-11-15 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-12-15 23:59:59Z]
+    end
+  end
+
+  describe "with predefined comparison modes" do
+    test "this_week_vs_last_week generates correct comparison range", %{site: site} do
+      # Use a known date: Wednesday, Feb 21, 2024
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: :week,
+          relative_date: ~D[2024-02-21],
+          include: [compare: :this_week_vs_last_week],
+          now: ~U[2024-02-21 14:00:00Z]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # This week: Monday Feb 19 to Sunday Feb 25 (2024)
+      # Last week: Monday Feb 12 to Sunday Feb 18
+      assert comparison_query.utc_time_range.first == ~U[2024-02-12 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2024-02-18 23:59:59Z]
+    end
+
+    test "this_month_vs_last_month generates correct comparison range", %{site: site} do
+      # Use a known date in March 2024
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: :month,
+          relative_date: ~D[2024-03-15],
+          include: [compare: :this_month_vs_last_month],
+          now: ~U[2024-03-15 14:00:00Z]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # This month: March 2024 (Mar 1 to Mar 31)
+      # Last month: February 2024 (Feb 1 to Feb 29, leap year)
+      assert comparison_query.utc_time_range.first == ~U[2024-02-01 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2024-02-29 23:59:59Z]
+    end
+
+    test "this_month_vs_last_month handles non-leap year correctly", %{site: site} do
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: :month,
+          relative_date: ~D[2023-03-15],
+          include: [compare: :this_month_vs_last_month],
+          now: ~U[2023-03-15 14:00:00Z]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # This month: March 2023
+      # Last month: February 2023 (28 days, not leap year)
+      assert comparison_query.utc_time_range.first == ~U[2023-02-01 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2023-02-28 23:59:59Z]
+    end
+
+    test "last_7_days_vs_previous_7_days generates correct comparison range", %{site: site} do
+      # Use a known date: Wednesday, Feb 21, 2024
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:last_n_days, 7},
+          relative_date: ~D[2024-02-21],
+          include: [compare: :last_7_days_vs_previous_7_days],
+          now: ~U[2024-02-21 14:00:00Z]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Last 7 days: Feb 15-21 (inclusive)
+      # Previous 7 days: Feb 8-14 (7 days before last 7 days)
+      assert comparison_query.utc_time_range.first == ~U[2024-02-08 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2024-02-14 23:59:59Z]
+    end
+
+    test "predefined modes ignore match_day_of_week option", %{site: site} do
+      # this_week_vs_last_week should work regardless of match_day_of_week
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: :week,
+          relative_date: ~D[2024-02-21],
+          include: [compare: :this_week_vs_last_week, compare_match_day_of_week: true],
+          now: ~U[2024-02-21 14:00:00Z]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Should still return last week's range, not affected by match_day_of_week
+      assert comparison_query.utc_time_range.first == ~U[2024-02-12 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2024-02-18 23:59:59Z]
+    end
   end
 
   describe "add_comparison_filters" do

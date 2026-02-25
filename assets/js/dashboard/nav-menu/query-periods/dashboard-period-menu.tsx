@@ -219,6 +219,7 @@ export const MainCalendar = ({
       <CalendarPanel className="mt-2">
         <DateRangeCalendar
           id="calendar"
+          mode="main"
           onCloseWithSelection={(selection) => {
             navigate({
               search: getSearchToApplyCustomDates(selection)

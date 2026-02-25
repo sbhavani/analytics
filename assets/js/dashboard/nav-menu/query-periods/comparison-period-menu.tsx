@@ -14,7 +14,10 @@ import {
   COMPARISON_MATCH_MODE_LABELS,
   ComparisonMatchMode,
   getCurrentComparisonPeriodDisplayName,
-  getSearchToApplyCustomComparisonDates
+  getSearchToApplyCustomComparisonDates,
+  getSearchToApplyThisWeekVsLastWeek,
+  getSearchToApplyThisMonthVsLastMonth,
+  getSearchToApplyLast7DaysVsPrevious7Days
 } from '../../dashboard-time-periods'
 import { Popover, Transition } from '@headlessui/react'
 import { popover, BlurMenuButtonOnEscape } from '../../components/popover'
@@ -37,6 +40,7 @@ export const ComparisonPeriodMenuItems = ({
   closeDropdown: () => void
   toggleCalendar: () => void
 }) => {
+  const site = useSiteContext()
   const { dashboardState } = useDashboardStateContext()
 
   if (!isComparisonEnabled(dashboardState.comparison)) {
@@ -79,6 +83,31 @@ export const ComparisonPeriodMenuItems = ({
           onClick={toggleCalendar}
         >
           {COMPARISON_MODES[ComparisonMode.custom]}
+        </AppNavigationLink>
+        <MenuSeparator />
+        <AppNavigationLink
+          data-selected={dashboardState.comparison === ComparisonMode.this_week_vs_last_week}
+          className={linkClassName}
+          search={getSearchToApplyThisWeekVsLastWeek(site)}
+          onClick={closeDropdown}
+        >
+          {COMPARISON_MODES[ComparisonMode.this_week_vs_last_week]}
+        </AppNavigationLink>
+        <AppNavigationLink
+          data-selected={dashboardState.comparison === ComparisonMode.this_month_vs_last_month}
+          className={linkClassName}
+          search={getSearchToApplyThisMonthVsLastMonth(site)}
+          onClick={closeDropdown}
+        >
+          {COMPARISON_MODES[ComparisonMode.this_month_vs_last_month]}
+        </AppNavigationLink>
+        <AppNavigationLink
+          data-selected={dashboardState.comparison === ComparisonMode.last_7_days_vs_previous_7_days}
+          className={linkClassName}
+          search={getSearchToApplyLast7DaysVsPrevious7Days(site)}
+          onClick={closeDropdown}
+        >
+          {COMPARISON_MODES[ComparisonMode.last_7_days_vs_previous_7_days]}
         </AppNavigationLink>
         {dashboardState.comparison !== ComparisonMode.custom && (
           <>
@@ -156,6 +185,7 @@ export const ComparisonCalendarMenu = ({
       <CalendarPanel className="mt-2">
         <DateRangeCalendar
           id="calendar"
+          mode="comparison"
           onCloseWithSelection={(selection) => {
             navigate({
               search: getSearchToApplyCustomComparisonDates(selection)

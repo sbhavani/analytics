@@ -6,6 +6,7 @@ import { stringifySearch } from '../../util/url-search-params'
 import { useNavigate } from 'react-router-dom'
 import { getRouterBasepath } from '../../router'
 import { DashboardPeriodPicker } from './dashboard-period-picker'
+import { ComparisonMode } from '../../dashboard-time-periods'
 import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
 
 mockAnimationsApi()
@@ -184,4 +185,37 @@ test('going back resets the stored dashboardState period to previous value', asy
   await userEvent.click(screen.getByTestId('browser-back'))
   expect(screen.getByText('Year to Date')).toBeVisible()
   expect(localStorage.getItem(periodStorageKey)).toBe('year')
+})
+
+describe('Period length warning for different-length comparisons', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  test('displays warning when main period has different length than comparison period', async () => {
+    // Main period: 10 days (Aug 10 - Aug 19)
+    // Comparison period: 7 days (Aug 3 - Aug 9)
+    const searchParams = stringifySearch({
+      period: 'custom',
+      from: '2024-08-10',
+      to: '2024-08-19',
+      comparison: ComparisonMode.custom,
+      compare_from: '2024-08-03',
+      compare_to: '2024-08-09'
+    })
+    const startUrl = `${getRouterBasepath({ domain, shared: false })}${searchParams}`
+
+    render(<DashboardPeriodPicker />, {
+      wrapper: (props) => (
+        <TestContextProviders
+          siteOptions={{ domain }}
+          routerProps={{ initialEntries: [startUrl] }}
+          {...props}
+        />
+      )
+    })
+
+    // Warning should be displayed for different-length periods
+    expect(screen.getByText('Different lengths')).toBeInTheDocument()
+  })
 })

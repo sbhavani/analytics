@@ -48,7 +48,10 @@ defmodule Plausible.Stats.Dashboard.QueryParser do
 
   @valid_comparison_shorthands %{
     "previous_period" => :previous_period,
-    "year_over_year" => :year_over_year
+    "year_over_year" => :year_over_year,
+    "this_week_vs_last_week" => :this_week_vs_last_week,
+    "this_month_vs_last_month" => :this_month_vs_last_month,
+    "last_7_days_vs_previous_7_days" => :last_7_days_vs_previous_7_days
   }
 
   @valid_comparison_shorthand_keys Map.keys(@valid_comparison_shorthands)
