@@ -88,6 +88,7 @@ defmodule PlausibleWeb.LayoutView do
         }
       end,
       %{key: "Email reports", value: "email-reports", icon: :envelope},
+      %{key: "Webhooks", value: "webhooks", icon: :webhook},
       if regular_site? and conn.assigns[:site_role] in [:owner, :admin] do
         %{key: "Danger zone", value: "danger-zone", icon: :exclamation_triangle}
       end

@@ -705,6 +705,13 @@ defmodule PlausibleWeb.Router do
       get "/:domain/settings/goals", SiteController, :settings_goals
       get "/:domain/settings/properties", SiteController, :settings_props
       get "/:domain/settings/email-reports", SiteController, :settings_email_reports
+      get "/:domain/settings/webhooks", SiteController, :settings_webhooks
+
+      post "/:domain/settings/webhooks", SiteController, :create_webhook
+      put "/:domain/settings/webhooks/:id", SiteController, :update_webhook
+      delete "/:domain/settings/webhooks/:id", SiteController, :delete_webhook
+      post "/:domain/settings/webhooks/:id/test", SiteController, :test_webhook
+      put "/:domain/settings/webhooks/:webhook_id/triggers/:trigger_id", SiteController, :update_webhook_trigger
 
       put "/:domain/settings", SiteController, :update_settings
 

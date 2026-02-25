@@ -58,14 +58,41 @@ defmodule Plausible.Workers.TrafficChangeNotifier do
   end
 
   defp notify_spike(notification, stats, now) do
+    # Send email notifications
     for recipient_email <- notification.recipients do
       send_spike_notification(recipient_email, notification.site, stats)
     end
+
+    # Send webhook notifications
+    trigger_webhook_spike(notification.site, stats)
 
     notification
     |> TrafficChangeNotification.was_sent(now)
     |> Repo.update()
   end
+
+  defp trigger_webhook_spike(site, stats) do
+    triggers = Plausible.Webhook.get_enabled_triggers_for_site(site)
+    visitor_spike_triggers = Enum.filter(triggers, &(&1.trigger_type == "visitor_spike"))
+
+    for trigger <- visitor_spike_triggers do
+      previous_visitors = stats.current_visitors - (stats.current_visitors * 0.4) |> round()
+      percentage = if previous_visitors > 0, do: ((stats.current_visitors - previous_visitors) / previous_visitors * 100), else: 0
+
+      payload = Plausible.Webhook.build_visitor_spike_payload(site, %{
+        current_visitors: stats.current_visitors,
+        previous_visitors: previous_visitors,
+        threshold: trigger.threshold || notification_default_threshold(),
+        percentage_increase: percentage,
+        sources: Map.get(stats, :sources, []),
+        top_pages: Map.get(stats, :pages, [])
+      })
+
+      Plausible.Webhook.queue_delivery(trigger.webhook, "visitor_spike", payload)
+    end
+  end
+
+  defp notification_default_threshold, do: 100
 
   defp notify_drop(notification, current_visitors, now) do
     for recipient_email <- notification.recipients do
