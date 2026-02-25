@@ -191,6 +191,20 @@ defmodule PlausibleWeb.SiteController do
     )
   end
 
+  def settings_webhooks(conn, _params) do
+    site = conn.assigns[:site]
+
+    webhooks = Plausible.Webhooks.Context.list_webhooks(site.id)
+
+    conn
+    |> render("settings_webhooks.html",
+      site: site,
+      webhooks: webhooks,
+      dogfood_page_path: "/:dashboard/settings/webhooks",
+      layout: {PlausibleWeb.LayoutView, "site_settings.html"}
+    )
+  end
+
   def settings_integrations(conn, _params) do
     site =
       conn.assigns.site

@@ -1,0 +1,7 @@
+<.settings_tiles>
+  <div>
+    {live_render(@conn, PlausibleWeb.Live.WebhookSettings,
+      session: %{"site_id" => @site.id, "domain" => @site.domain, "webhooks" => Jason.encode!(@webhooks)}
+    )}
+  </div>
+</.settings_tiles>
