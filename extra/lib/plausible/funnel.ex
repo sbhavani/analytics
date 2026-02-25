@@ -1,6 +1,6 @@
 defmodule Plausible.Funnel do
   @min_steps 2
-  @max_steps 8
+  @max_steps 10
 
   @moduledoc """
   A funnel is a marketing term used to capture and describe the journey
@@ -11,7 +11,8 @@ defmodule Plausible.Funnel do
   and changeset helpers for enumerating the steps within.
 
   Each step references a goal (either a Custom Event or Visit)
-  - see: `Plausible.Goal`.
+  or uses a custom event name directly.
+  - see: `Plausible.Funnel.Step`.
   """
 
   use Ecto.Schema
@@ -59,6 +60,7 @@ defmodule Plausible.Funnel do
     |> validate_required([:name])
     |> put_steps(attrs[:steps] || attrs["steps"])
     |> validate_length(:steps, min: @min_steps, max: @max_steps)
+    |> validate_step_order_sequential()
     |> unique_constraint(:name,
       name: :funnels_name_site_id_index
     )
@@ -71,5 +73,28 @@ defmodule Plausible.Funnel do
       Ecto.Changeset.put_change(step, :step_order, step_order + 1)
     end)
     |> then(&Ecto.Changeset.put_assoc(changeset, :steps, &1))
+  end
+
+  defp validate_step_order_sequential(changeset) do
+    steps = get_change(changeset, :steps) || []
+
+    if length(steps) > 0 do
+      step_orders =
+        steps
+        |> Enum.map(& &1.changes)
+        |> Enum.map(& &1.step_order)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.sort()
+
+      expected_orders = 1..length(steps)
+
+      if step_orders == Enum.to_list(expected_orders) do
+        changeset
+      else
+        add_error(changeset, :steps, "Step order must be sequential (1, 2, 3, ...)")
+      end
+    else
+      changeset
+    end
   end
 end

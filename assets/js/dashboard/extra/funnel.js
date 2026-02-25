@@ -5,6 +5,7 @@ import FunnelTooltip from './funnel-tooltip'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { numberShortFormatter } from '../util/number-formatter'
 import Bar from '../stats/bar'
+import { isComparisonEnabled } from '../dashboard-time-periods'
 
 import RocketIcon from '../stats/modals/rocket-icon'
 
@@ -25,7 +26,11 @@ const getPalette = (theme) => {
       stepNameLegendColor: 'rgb(228, 228, 231)',
       visitorsLegendClass: 'bg-indigo-500',
       dropoffLegendClass: 'bg-gray-600',
-      smallBarClass: 'bg-indigo-500'
+      smallBarClass: 'bg-indigo-500',
+      comparisonA: 'rgb(99, 102, 241)',
+      comparisonB: 'rgb(168, 85, 247)',
+      positiveChange: 'rgb(34, 197, 94)',
+      negativeChange: 'rgb(239, 68, 68)'
     }
   } else {
     return {
@@ -37,9 +42,19 @@ const getPalette = (theme) => {
       stepNameLegendColor: 'rgb(24, 24, 27)',
       visitorsLegendClass: 'bg-indigo-500',
       dropoffLegendClass: 'bg-indigo-100',
-      smallBarClass: 'bg-indigo-300'
+      smallBarClass: 'bg-indigo-300',
+      comparisonA: 'rgb(99, 102, 241)',
+      comparisonB: 'rgb(168, 85, 247)',
+      positiveChange: 'rgb(22, 163, 74)',
+      negativeChange: 'rgb(220, 38, 38)'
     }
   }
+}
+
+const formatChange = (value) => {
+  if (value === null || value === undefined) return '-'
+  const prefix = value > 0 ? '+' : ''
+  return `${prefix}${value}%`
 }
 
 export default function Funnel({ funnelName, tabs }) {
@@ -49,6 +64,7 @@ export default function Funnel({ funnelName, tabs }) {
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState(undefined)
   const [funnel, setFunnel] = useState(null)
+  const [comparison, setComparison] = useState(null)
   const [isSmallScreen, setSmallScreen] = useState(false)
   const theme = useTheme()
   const chartRef = useRef(null)
@@ -68,6 +84,19 @@ export default function Funnel({ funnelName, tabs }) {
         .finally(() => {
           setLoading(false)
         })
+
+      // Fetch comparison data if comparison mode is enabled
+      if (isComparisonEnabled(dashboardState.comparison)) {
+        fetchComparison()
+          .then((res) => {
+            setComparison(res)
+          })
+          .catch(() => {
+            setComparison(null)
+          })
+      } else {
+        setComparison(null)
+      }
 
       return () => {
         if (chartRef.current) {
@@ -153,6 +182,18 @@ export default function Funnel({ funnelName, tabs }) {
     } else {
       return api.get(
         `/api/stats/${encodeURIComponent(site.domain)}/funnels/${funnelMeta.id}`,
+        dashboardState
+      )
+    }
+  }
+
+  const fetchComparison = async () => {
+    const funnelMeta = getFunnel()
+    if (typeof funnelMeta === 'undefined') {
+      return null
+    } else {
+      return api.get(
+        `/api/stats/${encodeURIComponent(site.domain)}/funnels/${funnelMeta.id}/comparison`,
         dashboardState
       )
     }
@@ -332,6 +373,85 @@ export default function Funnel({ funnelName, tabs }) {
     }
   }
 
+  const renderEmptyState = () => {
+    return (
+      <>
+        {header()}
+        <div className="font-medium text-center text-gray-500 mt-44 dark:text-gray-400">
+          No data for selected period
+        </div>
+      </>
+    )
+  }
+
+  const renderWarning = (message) => {
+    return (
+      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-sm dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200">
+        {message}
+      </div>
+    )
+  }
+
+  const renderComparisonChart = (comparisonData, theme) => {
+    const palette = getPalette(theme)
+    const { comparison } = comparisonData
+
+    return (
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b dark:border-gray-700">
+              <th className="py-2 text-left font-medium text-gray-500 dark:text-gray-400">Step</th>
+              <th className="py-2 text-right font-medium text-indigo-500">Current Period</th>
+              <th className="py-2 text-right font-medium text-purple-500">Comparison Period</th>
+              <th className="py-2 text-right font-medium text-gray-500 dark:text-gray-400">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.map((step, index) => {
+              const isPositiveVisitors = step.visitors_change >= 0
+              const isPositiveConversion = step.conversion_change >= 0
+
+              return (
+                <tr key={index} className="border-b dark:border-gray-700">
+                  <td className="py-3 font-medium dark:text-gray-200">{step.label}</td>
+                  <td className="py-3 text-right">
+                    <div className="font-medium dark:text-gray-200">{numberShortFormatter(step.visitors_a)}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{step.conversion_rate_a}%</div>
+                  </td>
+                  <td className="py-3 text-right">
+                    <div className="font-medium dark:text-gray-200">{numberShortFormatter(step.visitors_b)}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{step.conversion_rate_b}%</div>
+                  </td>
+                  <td className="py-3 text-right">
+                    <div className={`font-medium ${isPositiveVisitors ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatChange(step.visitors_change)}
+                    </div>
+                    <div className={`text-xs ${isPositiveConversion ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatChange(step.conversion_change)}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        {/* Comparison Legend */}
+        <div className="mt-4 flex items-center justify-center gap-6 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-indigo-500"></span>
+            <span className="text-gray-500 dark:text-gray-400">Current Period</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-purple-500"></span>
+            <span className="text-gray-500 dark:text-gray-400">Comparison Period</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderInner = (theme) => {
     if (loading) {
       return (
@@ -342,8 +462,22 @@ export default function Funnel({ funnelName, tabs }) {
     } else if (error) {
       return renderError()
     } else if (funnel) {
+      // Check for empty state - no entering visitors
+      const hasData = funnel.entering_visitors > 0
+
+      if (!hasData) {
+        return renderEmptyState()
+      }
+
       const conversionRate =
         funnel.steps[funnel.steps.length - 1].conversion_rate
+
+      // Warning for single-step funnel
+      const showStepWarning = funnel.steps.length < 2
+      // Warning for date range > 1 year - check from dashboardState
+      const dateRange = dashboardState?.query?.date_range
+      const showDateWarning = dateRange &&
+        (new Date(dateRange[1]) - new Date(dateRange[0])) > (365 * 24 * 60 * 60 * 1000)
 
       return (
         <div className="mb-8">
@@ -352,8 +486,13 @@ export default function Funnel({ funnelName, tabs }) {
             {funnel.steps.length}-step funnel • {conversionRate}% conversion
             rate
           </p>
+          {showStepWarning && renderWarning('Funnels need at least 2 steps to show conversion rates')}
+          {showDateWarning && renderWarning('Date range exceeds 1 year - data granularity may be affected')}
           {isSmallScreen && (
             <div className="mt-4">{renderBars(funnel, theme)}</div>
+          )}
+          {comparison && comparison.comparison && (
+            renderComparisonChart(comparison, theme)
           )}
         </div>
       )

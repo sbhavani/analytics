@@ -276,6 +276,7 @@ defmodule PlausibleWeb.Router do
     scope "/stats", PlausibleWeb.Api do
       on_ee do
         get "/:domain/funnels/:id", StatsController, :funnel
+        get "/:domain/funnels/:id/comparison", StatsController, :funnel_comparison
       end
 
       scope private: %{allow_consolidated_views: true} do
