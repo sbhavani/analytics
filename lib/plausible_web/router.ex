@@ -330,6 +330,13 @@ defmodule PlausibleWeb.Router do
     get "/timeseries", ExternalStatsController, :timeseries
   end
 
+  scope "/api/graphql", PlausibleWeb.Api,
+    assigns: %{api_scope: "stats:read:*", api_context: :site} do
+    pipe_through [:public_api, PlausibleWeb.Plugs.APIAuth, PlausibleWeb.Plugs.RateLimit]
+
+    post "/", GraphQLController, :execute
+  end
+
   scope "/api/v2", PlausibleWeb.Api,
     private: %{
       allow_consolidated_views: true

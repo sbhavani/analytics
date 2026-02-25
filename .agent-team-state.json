@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "workflow_type": "feature",
+  "phase": "DEV_IMPLEMENT",
+  "feature": {
+    "feature": "Add GraphQL API: implement a GraphQL endpoint that exposes a",
+    "description": "Add GraphQL API: implement a GraphQL endpoint that exposes analytics data including pageviews, events, and custom metrics with filtering and aggregation.",
+    "rationale": "Manually specified via --feature flag",
+    "priority": "P1"
+  },
+  "pm_session": null,
+  "dev_session": "ff36f778-8323-4a68-810b-b97c6a843b6f",
+  "pr_url": null,
+  "branch_name": "003-graphql-analytics-api",
+  "worker_handoff": false,
+  "original_path": "/Users/sb/code/analytics",
+  "worktree_path": "/var/folders/yl/x7v44_357r1ck73mr69d_lzc0000gn/T/agent-team-analytics-20260225-141509-e1f0f2",
+  "thread_root_id": null,
+  "started_at": "2026-02-25T20:23:10.272705+00:00",
+  "updated_at": "2026-02-25T20:49:20.909961+00:00"
+}
