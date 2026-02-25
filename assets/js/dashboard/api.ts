@@ -111,6 +111,27 @@ export async function get(
   return handleApiResponse(response)
 }
 
+export async function getCohorts(
+  domain: string,
+  params: {
+    period?: 'daily' | 'weekly' | 'monthly'
+    from?: string
+    to?: string
+  } = {}
+) {
+  const queryString = serializeUrlParams({
+    ...params,
+    ...getSharedLinkSearchParams()
+  })
+
+  const response = await fetch(`/api/stats/${domain}/cohorts?${queryString}`, {
+    signal: abortController.signal,
+    headers: { ...getHeaders(), Accept: 'application/json' }
+  })
+
+  return handleApiResponse(response)
+}
+
 export const mutation = async <
   TBody extends Record<string, unknown> = Record<string, unknown>
 >(

@@ -1445,6 +1445,20 @@ defmodule PlausibleWeb.Api.StatsController do
     end
   end
 
+  def cohorts(conn, params) do
+    site = conn.assigns.site
+
+    case Stats.cohorts(site, params) do
+      {:ok, cohort_data} ->
+        json(conn, cohort_data)
+
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
+    end
+  end
+
   def custom_prop_values(conn, params) do
     site = Plausible.Repo.preload(conn.assigns.site, :team)
     prop_key = Map.fetch!(params, "prop_key")
