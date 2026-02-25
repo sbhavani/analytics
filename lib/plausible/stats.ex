@@ -8,7 +8,8 @@ defmodule Plausible.Stats do
     Timeseries,
     CurrentVisitors,
     FilterSuggestions,
-    QueryRunner
+    QueryRunner,
+    Cohort
   }
 
   def query(site, query) do
@@ -43,5 +44,9 @@ defmodule Plausible.Stats do
 
   def custom_prop_value_filter_suggestions(site, query, prop_key, filter_search) do
     FilterSuggestions.custom_prop_value_filter_suggestions(site, query, prop_key, filter_search)
+  end
+
+  def cohorts(site, params) do
+    Cohort.cohorts(site, params)
   end
 end
