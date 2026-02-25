@@ -1,5 +1,5 @@
-import React from 'react'
-import { XMarkIcon } from '@heroicons/react/20/solid'
+import React, { useState } from 'react'
+import { XMarkIcon, PuzzlePieceIcon } from '@heroicons/react/20/solid'
 import { useParams } from 'react-router-dom'
 
 import Modal from './modal'
@@ -22,6 +22,7 @@ import { useAppNavigate } from '../../navigation/use-app-navigate'
 import { SegmentModal } from '../../segments/segment-modals'
 import { findAppliedSegmentFilter } from '../../filtering/segments'
 import { removeFilterButtonClassname } from '../../components/remove-filter-button'
+import { FilterBuilderContainer } from '../../components/filter-builder'
 
 function partitionFilters(modalType, filters) {
   const otherFilters = []
@@ -70,13 +71,23 @@ class FilterModal extends React.Component {
 
     this.handleKeydown = this.handleKeydown.bind(this)
     this.closeModal = this.closeModal.bind(this)
+    this.openAdvancedBuilder = this.openAdvancedBuilder.bind(this)
     this.state = {
       dashboardState,
       filterState,
       labelState: dashboardState.labels,
       otherFilters,
-      hasRelevantFilters
+      hasRelevantFilters,
+      showAdvancedBuilder: false
     }
+  }
+
+  openAdvancedBuilder() {
+    this.setState({ showAdvancedBuilder: true })
+  }
+
+  closeAdvancedBuilder() {
+    this.setState({ showAdvancedBuilder: false })
   }
 
   componentDidMount() {
@@ -177,20 +188,40 @@ class FilterModal extends React.Component {
   }
 
   render() {
+    if (this.state.showAdvancedBuilder) {
+      return (
+        <FilterBuilderContainer
+          isOpen={true}
+          onClose={this.closeAdvancedBuilder.bind(this)}
+        />
+      )
+    }
+
     return (
       <Modal maxWidth="460px" allowScroll={true} onClose={this.closeModal}>
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-base md:text-lg font-bold dark:text-gray-100">
             Filter by {formatFilterGroup(this.props.modalType)}
           </h1>
-          <button
-            type="button"
-            onClick={this.closeModal}
-            aria-label="Close modal"
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-          >
-            <XMarkIcon className="size-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={this.openAdvancedBuilder}
+              aria-label="Open advanced filter builder"
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors"
+            >
+              <PuzzlePieceIcon className="w-4 h-4" />
+              Advanced
+            </button>
+            <button
+              type="button"
+              onClick={this.closeModal}
+              aria-label="Close modal"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            >
+              <XMarkIcon className="size-5" />
+            </button>
+          </div>
         </div>
 
         <div className="mt-2 md:mt-4 border-b border-gray-300 dark:border-gray-700"></div>
