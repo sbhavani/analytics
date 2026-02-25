@@ -218,6 +218,16 @@ defmodule PlausibleWeb.Router do
       post "/consume/:integration_id", SSOController, :saml_consume
       post "/csp-report", SSOController, :csp_report
     end
+
+    # SAML 2.0 SSO routes
+    scope "/saml", PlausibleWeb do
+      pipe_through [:browser, :csrf]
+
+      get "/login/:team_id", SAMLController, :login
+      post "/acs", SAMLController, :acs
+      get "/metadata", SAMLController, :metadata
+      get "/provision", SAMLController, :provision
+    end
   end
 
   scope path: "/api/plugins", as: :plugins_api do
@@ -421,6 +431,15 @@ defmodule PlausibleWeb.Router do
 
       get "/sites", Api.InternalController, :sites
     end
+
+    on_ee do
+      scope "/v1/saml", PlausibleWeb do
+        pipe_through :api
+
+        put "/config", SAMLController, :update
+        delete "/config", SAMLController, :delete
+      end
+    end
   end
 
   scope "/", PlausibleWeb do
@@ -512,6 +531,11 @@ defmodule PlausibleWeb.Router do
       get "/sso/general", SSOController, :sso_settings
       get "/sso/sessions", SSOController, :team_sessions
       delete "/sso/sessions/:session_id", SSOController, :delete_session
+
+      # SAML configuration routes
+      get "/sso/saml/settings", SAMLController, :settings
+      post "/sso/saml/settings", SAMLController, :update_settings
+      post "/sso/saml/test", SAMLController, :test_connection
     end
 
     post "/team/invitations/:invitation_id/accept", InvitationController, :accept_invitation
