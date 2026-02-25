@@ -5,7 +5,7 @@ defmodule PlausibleWeb.Api.StatsController do
   use PlausibleWeb.Plugs.ErrorHandler
 
   alias Plausible.Stats
-  alias Plausible.Stats.{Query, Comparisons, Filters, Time, TableDecider, TimeOnPage}
+  alias Plausible.Stats.{Query, Comparisons, Filters, Time, TableDecider, TimeOnPage, Cohort}
   alias PlausibleWeb.Api.Helpers, as: H
 
   require Logger
@@ -14,7 +14,7 @@ defmodule PlausibleWeb.Api.StatsController do
   @not_set "(not set)"
 
   plug(:date_validation_plug)
-  plug(:validate_required_filters_plug when action not in [:current_visitors])
+  plug(:validate_required_filters_plug when action not in [:current_visitors, :cohorts])
 
   @doc """
   Returns a time-series based on given parameters.
@@ -94,6 +94,20 @@ defmodule PlausibleWeb.Api.StatsController do
   ```
 
   """
+  def cohorts(conn, params) do
+    site = conn.assigns[:site]
+
+    with {:ok, dates} <- parse_date_params(params),
+         {:ok, opts} <- Cohort.validate_params(params),
+         date_range <- Date.range(dates.from, dates.to) do
+      result = Cohort.fetch_cohort_data(site, date_range, opts)
+      json(conn, result)
+    else
+      {:error, message} when is_binary(message) -> bad_request(conn, message)
+      {:error, changeset} -> bad_request(conn, elem(changeset.errors |> hd(), 1))
+    end
+  end
+
   def main_graph(conn, params) do
     site = conn.assigns[:site]
     now = conn.private[:now]
