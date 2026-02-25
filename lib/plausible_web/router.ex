@@ -328,6 +328,11 @@ defmodule PlausibleWeb.Router do
     get "/aggregate", ExternalStatsController, :aggregate
     get "/breakdown", ExternalStatsController, :breakdown
     get "/timeseries", ExternalStatsController, :timeseries
+
+    # Period Comparison endpoints
+    get "/compare", ExternalStatsController, :compare_periods
+    get "/period-pairs", ExternalStatsController, :list_period_pairs
+    post "/preferences/comparison", ExternalStatsController, :save_comparison_preferences
   end
 
   scope "/api/v2", PlausibleWeb.Api,
