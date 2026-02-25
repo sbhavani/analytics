@@ -328,6 +328,8 @@ defmodule PlausibleWeb.Router do
     get "/aggregate", ExternalStatsController, :aggregate
     get "/breakdown", ExternalStatsController, :breakdown
     get "/timeseries", ExternalStatsController, :timeseries
+
+    post "/graphql", GraphQLController, :execute
   end
 
   scope "/api/v2", PlausibleWeb.Api,
