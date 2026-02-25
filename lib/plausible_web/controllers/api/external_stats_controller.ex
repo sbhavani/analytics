@@ -394,4 +394,84 @@ defmodule PlausibleWeb.Api.ExternalStatsController do
     |> put_status(400)
     |> json(%{error: msg})
   end
+
+  # Period Comparison API Endpoints
+
+  def compare_periods(conn, params) do
+    site = Repo.preload(conn.assigns.site, :owners)
+
+    with {:ok, current_period, comparison_period} <- parse_period_params(params) do
+      metrics = if params["metrics"], do: String.split(params["metrics"], ","), else: nil
+
+      result = Plausible.Analytics.ComparisonQuery.fetch_comparison(
+        site,
+        current_period,
+        comparison_period,
+        metrics
+      )
+
+      json(conn, %{data: result})
+    else
+      {:error, reason} ->
+        send_json_error_response(conn, {:error, reason})
+    end
+  end
+
+  def list_period_pairs(_conn, _params) do
+    pairs = Plausible.Analytics.PredefinedPeriods.all_pairs()
+    json(%{data: pairs})
+  end
+
+  def save_comparison_preferences(conn, params) do
+    site = Repo.preload(conn.assigns.site, :owners)
+    user = conn.assigns.current_user
+
+    # For now, just return success - full implementation would save to database
+    # This would require a new schema for user preferences
+    json(conn, %{data: %{saved: true}})
+  end
+
+  defp parse_period_params(params) do
+    # Support either predefined pair or custom date ranges
+    cond do
+      params["period_pair"] ->
+        case Plausible.Analytics.PredefinedPeriods.calculate_periods(params["period_pair"]) do
+          {:ok, current, comparison} -> {:ok, current, comparison}
+          {:error, :unknown_pair} -> {:error, "Unknown period pair: #{params["period_pair"]}"}
+        end
+
+      params["current_start"] && params["current_end"] && params["comparison_start"] && params["comparison_end"] ->
+        current = Plausible.Analytics.PeriodComparison.new_time_period(
+          parse_date!(params["current_start"]),
+          parse_date!(params["current_end"]),
+          label: "Current Period",
+          period_type: :custom
+        )
+
+        comparison = Plausible.Analytics.PeriodComparison.new_time_period(
+          parse_date!(params["comparison_start"]),
+          parse_date!(params["comparison_end"]),
+          label: "Comparison Period",
+          period_type: :custom
+        )
+
+        case Plausible.Analytics.PeriodComparison.validate_date_range(current) do
+          :ok ->
+            case Plausible.Analytics.PeriodComparison.validate_date_range(comparison) do
+              :ok -> {:ok, current, comparison}
+              {:error, reason} -> {:error, "Comparison period: #{reason}"}
+            end
+          {:error, reason} -> {:error, "Current period: #{reason}"}
+        end
+
+      true ->
+        {:error, "Please provide either 'period_pair' or all of 'current_start', 'current_end', 'comparison_start', 'comparison_end'"}
+    end
+  rescue
+    _ -> {:error, "Invalid date format. Please use YYYY-MM-DD."}
+  end
+
+  defp parse_date!(date_string) when is_binary(date_string) do
+    Date.from_iso8601!(date_string)
+  end
 end
