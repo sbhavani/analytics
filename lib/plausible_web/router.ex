@@ -391,6 +391,18 @@ defmodule PlausibleWeb.Router do
 
           put "/:site_id", ExternalSitesController, :update_site
           delete "/:site_id", ExternalSitesController, :delete_site
+
+          # Webhooks
+          get "/:site_id/webhooks", Site.WebhookController, :index
+          post "/:site_id/webhooks", Site.WebhookController, :create
+          delete "/:site_id/webhooks/:id", Site.WebhookController, :delete
+          post "/:site_id/webhooks/:id/toggle", Site.WebhookController, :toggle
+          post "/:site_id/webhooks/:webhook_id/triggers", Site.WebhookController, :create_trigger
+          delete "/:site_id/webhooks/:webhook_id/triggers/:id", Site.WebhookController, :delete_trigger
+          post "/:site_id/webhooks/:webhook_id/triggers/:id/toggle", Site.WebhookController, :toggle_trigger
+          patch "/:site_id/webhooks/:webhook_id/triggers/:id", Site.WebhookController, :update_trigger
+          get "/:site_id/webhooks/:webhook_id/deliveries", Site.WebhookController, :deliveries
+          get "/:site_id/webhooks/:webhook_id/deliveries/:id", Site.WebhookController, :delivery
         end
       end
     end
