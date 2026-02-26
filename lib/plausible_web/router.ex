@@ -343,6 +343,13 @@ defmodule PlausibleWeb.Router do
     post "/query", ExternalQueryApiController, :query
   end
 
+  # GraphQL API endpoint
+  scope "/api/graphql", PlausibleWeb do
+    pipe_through [:api, PlausibleWeb.Plugs.AuthorizeGraphQL]
+
+    post "/", GraphQLController, :execute
+  end
+
   scope "/api/docs", PlausibleWeb.Api do
     get "/query/schema.json", ExternalQueryApiController, :schema
 
