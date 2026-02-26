@@ -124,6 +124,8 @@ defmodule Plausible.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: [:dev, :ce_dev]},
       {:phoenix_pubsub, "~> 2.0"},
       {:phoenix_live_view, "~> 1.1.17"},
+      {:absinthe, "~> 1.7"},
+      {:absinthe_phoenix, "~> 2.0"},
       {:php_serializer, "~> 2.0"},
       {:plug, "~> 1.13", override: true},
       {:prima, "~> 0.2.1"},

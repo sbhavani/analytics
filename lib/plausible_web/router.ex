@@ -406,6 +406,12 @@ defmodule PlausibleWeb.Router do
       get "/health", Api.SystemController, :readiness
     end
 
+    scope [] do
+      pipe_through :api
+
+      post "/graphql", Api.GraphQLController, :execute
+    end
+
     scope "/system" do
       get "/", Api.SystemController, :info
       get "/health/live", Api.SystemController, :liveness
