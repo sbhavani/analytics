@@ -420,6 +420,15 @@ defmodule PlausibleWeb.Router do
       put "/:domain/disable-feature", Api.InternalController, :disable_feature
 
       get "/sites", Api.InternalController, :sites
+
+      # Webhook endpoints
+      get "/:domain/webhooks", Api.WebhookController, :index
+      post "/:domain/webhooks", Api.WebhookController, :create
+      get "/:domain/webhooks/:id", Api.WebhookController, :show
+      put "/:domain/webhooks/:id", Api.WebhookController, :update
+      delete "/:domain/webhooks/:id", Api.WebhookController, :delete
+      post "/:domain/webhooks/:id/test", Api.WebhookController, :test
+      get "/:domain/webhooks/:id/deliveries", Api.WebhookController, :deliveries
     end
   end
 
