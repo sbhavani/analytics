@@ -38,6 +38,28 @@
     <.button class="w-full" type="submit">Log in</.button>
   </.form>
 
+  <%= if ee?() do %>
+    <div class="relative my-6">
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-gray-300"></div>
+      </div>
+      <div class="relative flex justify-center text-sm">
+        <span class="px-2 bg-white text-gray-500">Or continue with</span>
+      </div>
+    </div>
+
+    <.button
+      class="w-full"
+      type="button"
+      onclick="window.location.href='/sso/saml/signin'"
+    >
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+      </svg>
+      Sign in with Enterprise SSO (SAML)
+    </.button>
+  <% end %>
+
   <:footer>
     <.focus_list>
       <:item :if={

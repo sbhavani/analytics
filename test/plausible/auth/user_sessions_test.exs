@@ -536,6 +536,106 @@ defmodule Plausible.Auth.UserSessionsTest do
     end
   end
 
+  describe "remove_by_token/1" do
+    setup do
+      user = new_user()
+
+      session =
+        user
+        |> Auth.UserSession.new_session("A Device")
+        |> Repo.insert!()
+
+      {:ok, user: user, session: session}
+    end
+
+    test "removes session by token", %{session: session} do
+      assert :ok = UserSessions.remove_by_token(session.token)
+
+      refute Repo.reload(session)
+    end
+
+    test "handles non-existent token gracefully" do
+      assert :ok = UserSessions.remove_by_token(Ecto.UUID.generate())
+    end
+
+    test "only removes the specified session", %{session: session, user: user} do
+      another_session =
+        user
+        |> Auth.UserSession.new_session("Some Device")
+        |> Repo.insert!()
+
+      assert :ok = UserSessions.remove_by_token(session.token)
+
+      refute Repo.reload(session)
+      assert Repo.reload(another_session)
+    end
+  end
+
+  describe "socket_id/1" do
+    test "generates socket ID with correct prefix" do
+      token = "test-token-123"
+      socket_id = UserSessions.socket_id(token)
+
+      assert socket_id == "user_sessions:" <> Base.url_encode64(token)
+    end
+
+    test "encodes token correctly" do
+      token = "special!@#token"
+      socket_id = UserSessions.socket_id(token)
+
+      assert socket_id == "user_sessions:" <> Base.url_encode64(token)
+    end
+  end
+
+  describe "disconnect_by_token/1" do
+    test "handles non-existent token gracefully" do
+      # Should not raise, just return :ok
+      assert :ok = UserSessions.disconnect_by_token(Ecto.UUID.generate())
+    end
+
+    test "handles token with prefix gracefully" do
+      # Should not raise, just return :ok
+      socket_id = "user_sessions:" <> Base.url_encode64("some-token")
+      assert :ok = UserSessions.disconnect_by_token(socket_id)
+    end
+  end
+
+  describe "create!/3" do
+    test "creates a session for a user" do
+      user = insert(:user)
+
+      session = UserSessions.create!(user, "Test Device")
+
+      assert session.user_id == user.id
+      assert session.device == "Test Device"
+      assert session.token
+      assert session.last_used_at
+      assert session.timeout_at
+    end
+
+    test "creates session with custom timestamp" do
+      user = insert(:user)
+      now = NaiveDateTime.utc_now(:second)
+
+      session = UserSessions.create!(user, "Test Device", now: now)
+
+      assert session.user_id == user.id
+      assert session.last_used_at == now
+      assert session.timeout_at == now
+    end
+
+    test "creates session with custom timeout_at" do
+      user = insert(:user)
+      now = NaiveDateTime.utc_now(:second)
+      timeout = NaiveDateTime.shift(now, hour: 24)
+
+      session = UserSessions.create!(user, "Test Device", timeout_at: timeout)
+
+      assert session.user_id == user.id
+      assert session.timeout_at == timeout
+    end
+  end
+
   defp last_used_humanize(user, dt) do
     user
     |> insert_session("Some Device", dt)
