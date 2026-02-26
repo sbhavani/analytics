@@ -31,6 +31,42 @@
         <%= cond do %>
           <% @conn.assigns[:current_user] -> %>
             <ul class="flex items-center gap-2 w-full sm:w-auto">
+              <li>
+                <button
+                  x-data="{ dark: document.querySelector('html')?.classList.contains('dark') }"
+                  @click="
+                    dark = !dark;
+                    if (dark) {
+                      document.querySelector('html').classList.add('dark');
+                      localStorage.setItem('theme_preference', 'dark');
+                    } else {
+                      document.querySelector('html').classList.remove('dark');
+                      localStorage.setItem('theme_preference', 'light');
+                    }
+                  "
+                  @keydown.enter.window="
+                    dark = document.querySelector('html')?.classList.contains('dark');
+                    dark = !dark;
+                    if (dark) {
+                      document.querySelector('html').classList.add('dark');
+                      localStorage.setItem('theme_preference', 'dark');
+                    } else {
+                      document.querySelector('html').classList.remove('dark');
+                      localStorage.setItem('theme_preference', 'light');
+                    }
+                  "
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  aria-label="Toggle dark mode"
+                  title="Toggle dark mode"
+                >
+                  <svg x-show="!dark" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <svg x-show="dark" class="w-5 h-5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                </button>
+              </li>
               <li :if={
                 ee?() && @conn.assigns[:site] &&
                   Plausible.Auth.is_super_admin?(@conn.assigns[:current_user])
@@ -151,7 +187,43 @@
               <% end %>
             </ul>
           <% Keyword.fetch!(Application.get_env(:plausible, :selfhost), :disable_registration) != false -> %>
-            <ul class="flex" x-show="!document.cookie.includes('logged_in=true')">
+            <ul class="flex items-center gap-4" x-show="!document.cookie.includes('logged_in=true')">
+              <li>
+                <button
+                  x-data="{ dark: document.querySelector('html')?.classList.contains('dark') }"
+                  @click="
+                    dark = !dark;
+                    if (dark) {
+                      document.querySelector('html').classList.add('dark');
+                      localStorage.setItem('theme_preference', 'dark');
+                    } else {
+                      document.querySelector('html').classList.remove('dark');
+                      localStorage.setItem('theme_preference', 'light');
+                    }
+                  "
+                  @keydown.enter.window="
+                    dark = document.querySelector('html')?.classList.contains('dark');
+                    dark = !dark;
+                    if (dark) {
+                      document.querySelector('html').classList.add('dark');
+                      localStorage.setItem('theme_preference', 'dark');
+                    } else {
+                      document.querySelector('html').classList.remove('dark');
+                      localStorage.setItem('theme_preference', 'light');
+                    }
+                  "
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  aria-label="Toggle dark mode"
+                  title="Toggle dark mode"
+                >
+                  <svg x-show="!dark" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <svg x-show="dark" class="w-5 h-5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                </button>
+              </li>
               <li>
                 <div class="inline-flex">
                   <a
@@ -164,7 +236,43 @@
               </li>
             </ul>
           <% true -> %>
-            <ul class="flex" x-show="!document.cookie.includes('logged_in=true')">
+            <ul class="flex items-center gap-4" x-show="!document.cookie.includes('logged_in=true')">
+              <li>
+                <button
+                  x-data="{ dark: document.querySelector('html')?.classList.contains('dark') }"
+                  @click="
+                    dark = !dark;
+                    if (dark) {
+                      document.querySelector('html').classList.add('dark');
+                      localStorage.setItem('theme_preference', 'dark');
+                    } else {
+                      document.querySelector('html').classList.remove('dark');
+                      localStorage.setItem('theme_preference', 'light');
+                    }
+                  "
+                  @keydown.enter.window="
+                    dark = document.querySelector('html')?.classList.contains('dark');
+                    dark = !dark;
+                    if (dark) {
+                      document.querySelector('html').classList.add('dark');
+                      localStorage.setItem('theme_preference', 'dark');
+                    } else {
+                      document.querySelector('html').classList.remove('dark');
+                      localStorage.setItem('theme_preference', 'light');
+                    }
+                  "
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  aria-label="Toggle dark mode"
+                  title="Toggle dark mode"
+                >
+                  <svg x-show="!dark" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <svg x-show="dark" class="w-5 h-5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                </button>
+              </li>
               <li>
                 <div class="inline-flex">
                   <a

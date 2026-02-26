@@ -51,3 +51,18 @@
     opacity: 0;
   }
 }
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .modal[aria-hidden='false'] .modal__overlay {
+    animation: none;
+  }
+
+  .modal[aria-hidden='true'] .modal__overlay {
+    animation: none;
+  }
+
+  .modal-enter-active {
+    transition: none;
+  }
+}

@@ -362,3 +362,27 @@ iframe[hidden] {
   content: '';
   transform: rotate(45deg) translateY(1px);
 }
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .transition {
+    transition: none;
+  }
+
+  .fade-enter-active {
+    transition: none;
+  }
+
+  .pulsating-circle::before,
+  .pulsating-circle::after {
+    animation: none;
+  }
+}
