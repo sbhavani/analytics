@@ -28,6 +28,7 @@ import { DashboardKeybinds } from './dashboard-keybinds'
 import LastLoadContextProvider from './last-load-context'
 import { RoutelessModalsContextProvider } from './navigation/routeless-modals-context'
 import { RoutelessSegmentModals } from './segments/routeless-segment-modals'
+import ThemeContextProvider from './theme-context'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,18 +40,20 @@ const queryClient = new QueryClient({
 
 function DashboardElement() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <RoutelessModalsContextProvider>
-        <DashboardStateContextProvider>
-          <LastLoadContextProvider>
-            <Dashboard />
-            {/** render any children of the root route below */}
-          </LastLoadContextProvider>
-          <Outlet />
-          <RoutelessSegmentModals />
-        </DashboardStateContextProvider>
-      </RoutelessModalsContextProvider>
-    </QueryClientProvider>
+    <ThemeContextProvider>
+      <QueryClientProvider client={queryClient}>
+        <RoutelessModalsContextProvider>
+          <DashboardStateContextProvider>
+            <LastLoadContextProvider>
+              <Dashboard />
+              {/** render any children of the root route below */}
+            </LastLoadContextProvider>
+            <Outlet />
+            <RoutelessSegmentModals />
+          </DashboardStateContextProvider>
+        </RoutelessModalsContextProvider>
+      </QueryClientProvider>
+    </ThemeContextProvider>
   )
 }
 
