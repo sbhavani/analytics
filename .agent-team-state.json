@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "workflow_type": "feature",
+  "phase": "DEV_IMPLEMENT",
+  "feature": {
+    "feature": "Add advanced filter builder: create a UI component that allo",
+    "description": "Add advanced filter builder: create a UI component that allows users to combine multiple filter conditions (AND/OR) for custom visitor segments.",
+    "rationale": "Manually specified via --feature flag",
+    "priority": "P1"
+  },
+  "pm_session": null,
+  "dev_session": "7afb3690-71bd-46a2-8705-c919d75a3c95",
+  "pr_url": null,
+  "branch_name": "007-advanced-filter-builder",
+  "worker_handoff": false,
+  "original_path": "/Users/sb/code/analytics",
+  "worktree_path": "/var/folders/yl/x7v44_357r1ck73mr69d_lzc0000gn/T/agent-team-analytics-20260226-005804-b0e49d",
+  "thread_root_id": null,
+  "started_at": "2026-02-26T07:08:11.308508+00:00",
+  "updated_at": "2026-02-26T07:45:53.770316+00:00"
+}
