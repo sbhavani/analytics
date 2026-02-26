@@ -318,6 +318,16 @@ defmodule PlausibleWeb.Router do
       delete "/:segment_id", SegmentsController, :delete
       get "/:segment_id/shared-links", SegmentsController, :get_related_shared_links
     end
+
+    # Advanced filter builder segments API
+    scope "/sites/:site_id/segments", PlausibleWeb.Api do
+      post "/preview", SegmentController, :preview
+      get "/", SegmentController, :index
+      get "/:id", SegmentController, :show
+      post "/", SegmentController, :create
+      put "/:id", SegmentController, :update
+      delete "/:id", SegmentController, :delete
+    end
   end
 
   scope "/api/v1/stats", PlausibleWeb.Api,
