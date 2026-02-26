@@ -85,7 +85,7 @@ export default function MetricValue(props: {
     : null
 
   if (value === null && (!comparison || comparison.value === null)) {
-    return <span data-testid="metric-value">{displayFormatter(value)}</span>
+    return <span data-testid="metric-value">N/A</span>
   }
 
   const valueContent = (
