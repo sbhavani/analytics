@@ -449,4 +449,153 @@ defmodule PlausibleWeb.SettingsController do
     |> put_flash(:success, "Email updated")
     |> redirect(to: Routes.settings_path(conn, :security) <> "#update-email")
   end
+
+  # SSO/SAML Configuration
+  on_ee do
+    def sso(conn, _params) do
+      team = conn.assigns.current_team
+
+      # Get existing SSO integration if any
+      sso_integration = get_sso_integration(team.id)
+
+      render(conn, :sso,
+        sso_integration: sso_integration,
+        layout: {PlausibleWeb.LayoutView, :settings}
+      )
+    end
+
+    def update_sso(conn, %{"sso" => params}) do
+      team = conn.assigns.current_team
+
+      case save_sso_integration(team.id, params) do
+        {:ok, _integration} ->
+          conn
+          |> put_flash(:success, "SSO configuration saved")
+          |> redirect(to: Routes.settings_path(conn, :sso) <> "#sso-config")
+
+        {:error, changeset} ->
+          conn
+          |> put_flash(:error, "Failed to save SSO configuration")
+          |> render(:sso,
+            sso_integration: changeset,
+            layout: {PlausibleWeb.LayoutView, :settings}
+          )
+      end
+    end
+
+    def test_sso(conn, %{"sso" => params}) do
+      case Auth.SSO.test_connection(params) do
+        {:ok, _result} ->
+          json(conn, %{success: true, message: "Connection test successful"})
+
+        {:error, error} ->
+          json(conn, %{success: false, message: "Connection failed: #{inspect(error)}"})
+      end
+    end
+
+    def enable_sso(conn, %{"integration_id" => integration_id}) do
+      team = conn.assigns.current_team
+
+      case enable_sso_integration(team.id, integration_id) do
+        {:ok, _integration} ->
+          conn
+          |> put_flash(:success, "SSO enabled")
+          |> redirect(to: Routes.settings_path(conn, :sso))
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Failed to enable SSO: #{inspect(reason)}")
+          |> redirect(to: Routes.settings_path(conn, :sso))
+      end
+    end
+
+    def disable_sso(conn, _params) do
+      team = conn.assigns.current_team
+
+      case disable_sso_integration(team.id) do
+        {:ok, _integration} ->
+          conn
+          |> put_flash(:success, "SSO disabled")
+          |> redirect(to: Routes.settings_path(conn, :sso))
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Failed to disable SSO: #{inspect(reason)}")
+          |> redirect(to: Routes.settings_path(conn, :sso))
+      end
+    end
+
+    # Private helpers for SSO
+
+    defp get_sso_integration(team_id) do
+      # Query sso_integrations table
+      import Ecto.Query
+      Plausible.Repo.one(from i in Plausible.Auth.SSO.Integration, where: i.team_id == ^team_id)
+    end
+
+    defp save_sso_integration(team_id, params) do
+      # Validate config first
+      case Auth.SSO.validate_config(params) do
+        :ok ->
+          # Save to database
+          integration = get_sso_integration(team_id)
+
+          if integration do
+            # Update existing
+            Ecto.Changeset.change(integration, %{
+              identifier: :crypto.strong_rand_bytes(16) |> Base.encode16(),
+              config: %{
+                idp_entity_id: params["idp_entity_id"],
+                idp_sso_url: params["idp_sso_url"],
+                idp_certificate: params["idp_certificate"]
+              }
+            })
+            |> Plausible.Repo.update()
+          else
+            # Create new
+            %Plausible.Auth.SSO.Integration{
+              team_id: team_id,
+              identifier: :crypto.strong_rand_bytes(16) |> Base.encode16(),
+              config: %{
+                idp_entity_id: params["idp_entity_id"],
+                idp_sso_url: params["idp_sso_url"],
+                idp_certificate: params["idp_certificate"]
+              }
+            }
+            |> Plausible.Repo.insert()
+          end
+
+        {:error, errors} ->
+          {:error, errors}
+      end
+    end
+
+    defp enable_sso_integration(team_id, integration_id) do
+      # Enable the SSO integration
+      import Ecto.Query
+
+      from(i in Plausible.Auth.SSO.Integration,
+        where: i.id == ^integration_id and i.team_id == ^team_id
+      )
+      |> Plausible.Repo.update_all(set: [enabled: true])
+      |> case do
+        {1, _} -> {:ok, :enabled}
+        _ -> {:error, :not_found}
+      end
+    end
+
+    defp disable_sso_integration(team_id) do
+      # Disable all SSO integrations for the team
+      import Ecto.Query
+
+      from(i in Plausible.Auth.SSO.Integration,
+        where: i.team_id == ^team_id
+      )
+      |> Plausible.Repo.update_all(set: [enabled: false])
+      |> case do
+        {_count, _} -> {:ok, :disabled}
+        _ -> {:error, :not_found}
+      end
+    end
+  end
 end

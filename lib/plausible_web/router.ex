@@ -209,6 +209,13 @@ defmodule PlausibleWeb.Router do
     scope "/sso/saml", PlausibleWeb do
       pipe_through [:sso_saml]
 
+      get "/metadata", SSOController, :saml_metadata
+
+      # SAML Single Logout (SLO) endpoints
+      get "/logout/:integration_id", SAMLController, :logout
+      post "/logout-response/:integration_id", SAMLController, :logout_response
+      post "/slo/:integration_id", SAMLController, :slo_consume
+
       scope [] do
         pipe_through :sso_saml_auth
 
@@ -512,6 +519,13 @@ defmodule PlausibleWeb.Router do
       get "/sso/general", SSOController, :sso_settings
       get "/sso/sessions", SSOController, :team_sessions
       delete "/sso/sessions/:session_id", SSOController, :delete_session
+
+      # SAML Configuration routes
+      get "/sso/saml", SettingsController, :sso
+      post "/sso/saml", SettingsController, :update_sso
+      post "/sso/saml/test", SettingsController, :test_sso
+      post "/sso/saml/enable", SettingsController, :enable_sso
+      post "/sso/saml/disable", SettingsController, :disable_sso
     end
 
     post "/team/invitations/:invitation_id/accept", InvitationController, :accept_invitation
