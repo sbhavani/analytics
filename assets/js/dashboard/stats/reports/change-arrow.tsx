@@ -10,11 +10,20 @@ export function ChangeArrow({
   className,
   hideNumber
 }: {
-  change: number
+  change: number | null
   metric: Metric
   className: string
   hideNumber?: boolean
 }) {
+  // Handle null change (no data scenario)
+  if (change === null) {
+    return (
+      <span className={className} data-testid="change-arrow">
+        N/A
+      </span>
+    )
+  }
+
   let icon = null
   const arrowClassName = classNames(
     color(change, metric),
