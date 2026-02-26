@@ -86,6 +86,15 @@ defmodule PlausibleWeb.Endpoint do
   plug(:runtime_session)
 
   plug(CORSPlug)
+
+  # GraphQL API - Absinthe.Plug configuration
+  # Handles GraphQL requests at /api/graphql
+  # Must be before router to intercept GraphQL requests
+  plug Absinthe.Plug,
+    schema: Plausible.Graphqla.Schema,
+    at: "/api/graphql",
+    json_codec: Phoenix.json_library()
+
   plug(PlausibleWeb.Router)
 
   def secure_cookie?, do: config!(:secure_cookie)
