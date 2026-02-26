@@ -148,6 +148,10 @@ defmodule Plausible.MixProject do
       {:mjml, "~> 4.0.0"},
       {:heroicons, "~> 0.5.0"},
       {:zxcvbn, git: "https://github.com/techgaun/zxcvbn-elixir.git"},
+      # GraphQL
+      {:absinthe, "~> 1.7"},
+      {:absinthe_plug, "~> 1.5"},
+      {:absinthe_ecto, "~> 0.1"},
       {:open_api_spex, "~> 3.22.1"},
       {:joken, "~> 2.5"},
       {:paginator, git: "https://github.com/duffelhq/paginator.git"},

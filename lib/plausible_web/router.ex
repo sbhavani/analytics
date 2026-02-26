@@ -420,6 +420,9 @@ defmodule PlausibleWeb.Router do
       put "/:domain/disable-feature", Api.InternalController, :disable_feature
 
       get "/sites", Api.InternalController, :sites
+
+      # GraphQL API
+      post "/graphql", PlausibleWeb.GraphqlController, :execute
     end
   end
 
