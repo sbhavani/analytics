@@ -100,9 +100,38 @@
   --color-gray-825: rgb(35 35 38);
   --color-gray-850: rgb(34 34 38);
 
+  /* Dark mode theme colors */
+  --color-dark-bg: rgb(24 24 27);
+  --color-dark-bg-secondary: rgb(34 34 38);
+  --color-dark-bg-tertiary: rgb(39 39 42);
+  --color-dark-surface: rgb(34 34 38);
+  --color-dark-border: rgb(63 63 70);
+  --color-dark-text: rgb(244 244 245);
+  --color-dark-text-secondary: rgb(212 212 216);
+  --color-dark-text-muted: rgb(161 161 170);
+  --color-dark-input-bg: rgb(39 39 42);
+  --color-dark-card-bg: rgb(34 34 38);
+  --color-dark-hover: rgb(50 50 54);
+
   /* Set v3 default ring behavior */
   --default-ring-width: 2px;
   --default-ring-color: var(--color-indigo-500);
+}
+
+/* Dark mode CSS variable overrides - applied when .dark class is on html element */
+html.dark,
+html.dark body {
+  --color-bg-primary: var(--color-dark-bg);
+  --color-bg-secondary: var(--color-dark-bg-secondary);
+  --color-bg-tertiary: var(--color-dark-bg-tertiary);
+  --color-surface: var(--color-dark-surface);
+  --color-border: var(--color-dark-border);
+  --color-text: var(--color-dark-text);
+  --color-text-secondary: var(--color-dark-text-secondary);
+  --color-text-muted: var(--color-dark-text-muted);
+  --color-input-bg: var(--color-dark-input-bg);
+  --color-card-bg: var(--color-dark-card-bg);
+  --color-hover: var(--color-dark-hover);
 }
 
 @media print {
@@ -128,7 +157,7 @@
 }
 
 .button {
-  @apply inline-flex justify-center px-3.5 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md leading-5 transition hover:bg-indigo-700;
+  @apply inline-flex justify-center px-3.5 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md leading-5 transition hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600;
 }
 
 .button[disabled] {
