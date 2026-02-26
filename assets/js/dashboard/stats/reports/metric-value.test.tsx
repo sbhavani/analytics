@@ -58,7 +58,7 @@ describe('single value', () => {
   it('renders null revenue without tooltip', async () => {
     render(<MetricValue {...valueProps('average_revenue', null)} />)
 
-    expect(screen.getByTestId('metric-value')).toHaveTextContent('-')
+    expect(screen.getByTestId('metric-value')).toHaveTextContent('No data available')
 
     await expect(waitForTooltip).rejects.toThrow()
   })
@@ -197,9 +197,26 @@ describe('comparisons', () => {
       />
     )
 
-    expect(screen.getByTestId('metric-value')).toHaveTextContent('-')
+    expect(screen.getByTestId('metric-value')).toHaveTextContent('No data available')
 
     await expect(waitForTooltip).rejects.toThrow()
+  })
+
+  it('renders no data available when primary value exists but comparison is null', async () => {
+    await renderWithTooltip(
+      <MetricValue {...valueProps('visitors', 10, { value: null, change: 0 })} />
+    )
+
+    expect(screen.getByTestId('metric-value')).toHaveTextContent('10')
+    expect(screen.getByTestId('metric-value')).toHaveTextContent('(No comparison data)')
+  })
+
+  it('renders no data available when comparison value is null in tooltip', async () => {
+    await renderWithTooltip(
+      <MetricValue {...valueProps('visitors', 10, { value: null, change: 0 })} />
+    )
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent('No data available')
   })
 })
 
