@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "workflow_type": "feature",
+  "phase": "DEV_IMPLEMENT",
+  "feature": {
+    "feature": "Implement time period comparison: add ability to compare met",
+    "description": "Implement time period comparison: add ability to compare metrics between two date ranges (e.g., this week vs last week) with percentage change display.",
+    "rationale": "Manually specified via --feature flag",
+    "priority": "P1"
+  },
+  "pm_session": null,
+  "dev_session": "e08e05f8-4537-4169-8b42-716d464a3fec",
+  "pr_url": null,
+  "branch_name": "001-time-period-compare",
+  "worker_handoff": false,
+  "original_path": "/Users/sb/code/analytics",
+  "worktree_path": "/var/folders/yl/x7v44_357r1ck73mr69d_lzc0000gn/T/agent-team-analytics-20260226-115808-7e9040",
+  "thread_root_id": null,
+  "started_at": "2026-02-26T18:00:46.635564+00:00",
+  "updated_at": "2026-02-26T18:12:06.243567+00:00"
+}
