@@ -594,6 +594,17 @@ defmodule PlausibleWeb.Router do
 
     delete "/sites/:domain/memberships/u/:id", Site.MembershipController, :remove_member_by_user
 
+    # Webhook settings
+    get "/sites/:domain/settings/webhooks", SiteController.Webhook, :index
+    get "/sites/:domain/settings/webhooks/new", SiteController.Webhook, :new
+    post "/sites/:domain/settings/webhooks", SiteController.Webhook, :create
+    get "/sites/:domain/settings/webhooks/:id/edit", SiteController.Webhook, :edit
+    put "/sites/:domain/settings/webhooks/:id", SiteController.Webhook, :update
+    delete "/sites/:domain/settings/webhooks/:id", SiteController.Webhook, :delete
+    post "/sites/:domain/settings/webhooks/:id/test", SiteController.Webhook, :test
+    get "/sites/:domain/settings/webhooks/:id/deliveries", SiteController.Webhook, :deliveries
+    post "/sites/:domain/settings/webhooks/:id/deliveries/:delivery_id/retry", SiteController.Webhook, :retry_delivery
+
     scope alias: Live, assigns: %{connect_live_socket: true} do
       pipe_through [:app_layout, PlausibleWeb.RequireAccountPlug]
 

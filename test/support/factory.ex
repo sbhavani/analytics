@@ -380,6 +380,53 @@ defmodule Plausible.Factory do
     }
   end
 
+  def webhook_config_factory(attrs) do
+    secret = Map.get(attrs, :secret, :crypto.strong_rand_bytes(32) |> Base.encode64())
+
+    webhook_config = %Plausible.WebhookNotifications.WebhookConfig{
+      endpoint_url: "https://example.com/webhook",
+      secret: secret,
+      is_active: true
+    }
+
+    merge_attributes(webhook_config, attrs)
+  end
+
+  def webhook_config_factory(attrs) do
+    site = Map.get(attrs, :site) || build(:site)
+    secret = Map.get(attrs, :secret, :crypto.strong_rand_bytes(32) |> Base.encode64())
+
+    webhook_config = %Plausible.WebhookNotifications.WebhookConfig{
+      site: site,
+      endpoint_url: "https://example.com/webhook",
+      secret: secret,
+      is_active: true
+    }
+
+    merge_attributes(webhook_config, attrs)
+  end
+
+  def webhook_delivery_log_factory(attrs) do
+    webhook_config = Map.get(attrs, :webhook_config) || build(:webhook_config)
+
+    delivery_log = %Plausible.WebhookNotifications.DeliveryLog{
+      webhook_config: webhook_config,
+      event_type: "test",
+      payload: %{"message" => "test payload"},
+      status: "pending",
+      response_code: nil,
+      response_body: nil,
+      attempt_number: 1,
+      delivered_at: nil
+    }
+
+    merge_attributes(delivery_log, attrs)
+  end
+
+  def delivery_log_factory(attrs) do
+    webhook_delivery_log_factory(attrs)
+  end
+
   def country_rule_factory do
     %Plausible.Shield.CountryRule{
       added_by: "Mr Seed <user@plausible.test>"
