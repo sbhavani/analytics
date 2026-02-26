@@ -7,6 +7,8 @@ defmodule Plausible.Site do
   import Ecto.Changeset
   import Ecto.Query, only: [from: 2]
   alias Plausible.Site.GoogleAuth
+  alias Plausible.Site.{Webhook, WebhookTrigger, WebhookDelivery}
+  alias Plausible.Repo
 
   @type t() :: %__MODULE__{}
 
@@ -44,6 +46,7 @@ defmodule Plausible.Site do
 
     has_many :goals, Plausible.Goal, preload_order: [desc: :id]
     has_many :revenue_goals, Plausible.Goal, where: [currency: {:not, nil}]
+    has_many :webhooks, Plausible.Site.Webhook
     has_one :google_auth, GoogleAuth
     has_one :weekly_report, Plausible.Site.WeeklyReport
     has_one :monthly_report, Plausible.Site.MonthlyReport
@@ -240,6 +243,108 @@ defmodule Plausible.Site do
     else
       add_error(changeset, :timezone, "is invalid")
     end
+  end
+
+  # Webhook functions
+
+  def list_webhooks(%__MODULE__{id: site_id}) do
+    Repo.all(from w in Webhook, where: w.site_id == ^site_id, preload: [:triggers])
+  end
+
+  def get_webhook(webhook_id) do
+    Repo.get(Webhook, webhook_id) |> Repo.preload(:triggers)
+  end
+
+  def create_webhook(site, attrs) do
+    site
+    |> Ecto.build_assoc(:webhooks)
+    |> Webhook.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_webhook(%Webhook{} = webhook, attrs) do
+    webhook
+    |> Webhook.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_webhook(%Webhook{} = webhook) do
+    Repo.delete(webhook)
+  end
+
+  def toggle_webhook_enabled(%Webhook{} = webhook) do
+    webhook
+    |> Webhook.toggle_enabled()
+    |> Repo.update()
+  end
+
+  def create_webhook_trigger(webhook, attrs) do
+    webhook
+    |> Ecto.build_assoc(:triggers)
+    |> WebhookTrigger.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def delete_webhook_trigger(%WebhookTrigger{} = trigger) do
+    Repo.delete(trigger)
+  end
+
+  def toggle_webhook_trigger_enabled(%WebhookTrigger{} = trigger) do
+    trigger
+    |> WebhookTrigger.toggle_enabled()
+    |> Repo.update()
+  end
+
+  def update_webhook_trigger(%WebhookTrigger{} = trigger, attrs) do
+    trigger
+    |> WebhookTrigger.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def list_webhook_deliveries(%Webhook{} = webhook, filters \\ %{}) do
+    query = from d in WebhookDelivery,
+      where: d.webhook_id == ^webhook.id,
+      order_by: [desc: d.inserted_at]
+
+    query =
+      if filters[:status] do
+        WebhookDelivery.with_status(query, filters[:status])
+      else
+        query
+      end
+
+    query =
+      if filters[:from_date] && filters[:to_date] do
+        WebhookDelivery.within_date_range(query, filters[:from_date], filters[:to_date])
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  def get_webhook_delivery(webhook_id, delivery_id) do
+    Repo.get_by(WebhookDelivery, webhook_id: webhook_id, id: delivery_id)
+  end
+
+  def create_webhook_delivery(attrs) do
+    %WebhookDelivery{}
+    |> WebhookDelivery.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_webhook_delivery(%WebhookDelivery{} = delivery, attrs) do
+    delivery
+    |> WebhookDelivery.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def get_enabled_webhooks(%__MODULE__{id: site_id}) do
+    Repo.all(
+      from w in Webhook,
+        where: w.site_id == ^site_id and w.enabled == true,
+        preload: [:triggers]
+    )
   end
 end
 

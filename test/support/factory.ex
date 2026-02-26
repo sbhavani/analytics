@@ -75,6 +75,29 @@ defmodule Plausible.Factory do
     }
   end
 
+  def webhook_factory(attrs) do
+    site = Map.get(attrs, :site, build(:site))
+
+    %Plausible.Site.Webhook{
+      site: site,
+      url: "https://example.com/webhook",
+      secret: "secret_key_1234567890",
+      name: "Test Webhook",
+      enabled: true
+    }
+  end
+
+  def webhook_trigger_factory(attrs) do
+    webhook = Map.get(attrs, :webhook, build(:webhook))
+
+    %Plausible.Site.WebhookTrigger{
+      webhook: webhook,
+      trigger_type: "visitor_spike",
+      threshold: 100,
+      enabled: true
+    }
+  end
+
   def site_factory(attrs) do
     # The é exercises unicode support in domain names
     domain = sequence(:domain, &"é-#{&1}.example.com")
@@ -378,6 +401,40 @@ defmodule Plausible.Factory do
       description: "Test IP Rule",
       added_by: "Mr Seed <user@plausible.test>"
     }
+  end
+
+  def webhook_factory(attrs) do
+    %Plausible.Site.Webhook{
+      url: "https://example.com/webhook",
+      secret: "1234567890123456",
+      name: "Test Webhook",
+      enabled: true,
+      site: build(:site)
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def webhook_trigger_factory(attrs) do
+    %Plausible.Site.WebhookTrigger{
+      trigger_type: "visitor_spike",
+      threshold: 10,
+      enabled: true,
+      webhook: build(:webhook)
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def webhook_delivery_factory(attrs) do
+    %Plausible.Site.WebhookDelivery{
+      event_type: "spike",
+      payload: %{"visitors" => 100, "threshold" => 10},
+      status_code: 200,
+      response_body: "OK",
+      attempt_number: 1,
+      webhook: build(:webhook),
+      trigger: build(:webhook_trigger)
+    }
+    |> merge_attributes(attrs)
   end
 
   def country_rule_factory do
