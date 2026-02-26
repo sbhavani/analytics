@@ -392,6 +392,27 @@ defmodule Plausible.Factory do
     }
   end
 
+  def visitor_segment_factory do
+    %Plausible.Segments.VisitorSegment{
+      name: "Test Segment",
+      type: "site"
+    }
+  end
+
+  def filter_group_factory do
+    %Plausible.Segments.FilterGroup{
+      operator: "AND"
+    }
+  end
+
+  def filter_condition_factory do
+    %Plausible.Segments.FilterCondition{
+      field: "visit:country",
+      operator: "equals",
+      value: "US"
+    }
+  end
+
   defp hash_key() do
     Keyword.fetch!(
       Application.get_env(:plausible, PlausibleWeb.Endpoint),
