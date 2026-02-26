@@ -191,6 +191,85 @@ defmodule PlausibleWeb.SiteController do
     )
   end
 
+  def settings_webhooks(conn, _params) do
+    site = conn.assigns[:site]
+
+    webhooks = Plausible.Webhooks.list_webhooks(site)
+
+    conn
+    |> render("settings_webhooks.html",
+      site: site,
+      webhooks: webhooks,
+      dogfood_page_path: "/:dashboard/settings/webhooks",
+      layout: {PlausibleWeb.LayoutView, "site_settings.html"}
+    )
+  end
+
+  def create_webhook(conn, params) do
+    site = conn.assigns[:site]
+
+    case Plausible.Webhooks.create_webhook(site, params["webhook"] || %{}) do
+      {:ok, _webhook} ->
+        conn
+        |> put_flash(:success, "Webhook created successfully")
+        |> redirect(to: "/#{site.domain}/settings/webhooks")
+
+      {:error, changeset} ->
+        webhooks = Plausible.Webhooks.list_webhooks(site)
+
+        conn
+        |> render("settings_webhooks.html",
+          site: site,
+          webhooks: webhooks,
+          changeset: changeset,
+          dogfood_page_path: "/:dashboard/settings/webhooks",
+          layout: {PlausibleWeb.LayoutView, "site_settings.html"}
+        )
+    end
+  end
+
+  def delete_webhook(conn, %{"id" => webhook_id}) do
+    site = conn.assigns[:site]
+
+    webhook = Plausible.Webhooks.get_webhook!(webhook_id)
+
+    if webhook.site_id == site.id do
+      Plausible.Webhooks.delete_webhook(webhook)
+
+      conn
+      |> put_flash(:success, "Webhook deleted")
+      |> redirect(to: "/#{site.domain}/settings/webhooks")
+    else
+      conn
+      |> put_flash(:error, "Not found")
+      |> redirect(to: "/#{site.domain}/settings/webhooks")
+    end
+  end
+
+  def test_webhook(conn, %{"id" => webhook_id}) do
+    site = conn.assigns[:site]
+
+    webhook = Plausible.Webhooks.get_webhook!(webhook_id)
+
+    if webhook.site_id == site.id do
+      case Plausible.Webhooks.send_test_webhook(webhook) do
+        {:ok, _} ->
+          conn
+          |> put_flash(:success, "Test webhook queued! It will be delivered shortly.")
+          |> redirect(to: "/#{site.domain}/settings/webhooks")
+
+        {:error, message} ->
+          conn
+          |> put_flash(:error, "Test failed: #{message}")
+          |> redirect(to: "/#{site.domain}/settings/webhooks")
+      end
+    else
+      conn
+      |> put_flash(:error, "Not found")
+      |> redirect(to: "/#{site.domain}/settings/webhooks")
+    end
+  end
+
   def settings_integrations(conn, _params) do
     site =
       conn.assigns.site
