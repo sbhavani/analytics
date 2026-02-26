@@ -217,6 +217,86 @@ defmodule PlausibleWeb.Api.StatsController do
     })
   end
 
+  def compare(conn, params) do
+    site = conn.assigns[:site]
+
+    with {:ok, primary_start} <- parse_date(params["period_primary_start"]),
+         {:ok, primary_end} <- parse_date(params["period_primary_end"]),
+         {:ok, comparison_start} <- parse_date(params["period_comparison_start"]),
+         {:ok, comparison_end} <- parse_date(params["period_comparison_end"]),
+         {:ok, metric} <- parse_metric(params["metric"]) do
+      primary_query = Query.from(site, %{
+        "period" => "custom",
+        "from" => Date.to_iso8601(primary_start),
+        "to" => Date.to_iso8601(primary_end)
+      }, debug_metadata: debug_metadata(conn))
+
+      comparison_query = Query.from(site, %{
+        "period" => "custom",
+        "from" => Date.to_iso8601(comparison_start),
+        "to" => Date.to_iso8601(comparison_end)
+      }, debug_metadata: debug_metadata(conn))
+
+      primary_result = Stats.aggregate(site, primary_query, [metric])
+      comparison_result = Stats.aggregate(site, comparison_query, [metric])
+
+      primary_value = get_in(primary_result.results, [metric, :value]) || 0
+      comparison_value = get_in(comparison_result.results, [metric, :value]) || 0
+
+      absolute_change = primary_value - comparison_value
+
+      percentage_change = Plausible.Stats.Compare.percent_change(comparison_value, primary_value)
+
+      change_direction = get_change_direction(percentage_change)
+
+      json(conn, %{
+        primary: %{
+          date_range: %{
+            start_date: Date.to_iso8601(primary_start),
+            end_date: Date.to_iso8601(primary_end)
+          },
+          value: primary_value
+        },
+        comparison: %{
+          date_range: %{
+            start_date: Date.to_iso8601(comparison_start),
+            end_date: Date.to_iso8601(comparison_end)
+          },
+          value: comparison_value
+        },
+        comparison_result: %{
+          absolute_change: absolute_change,
+          percentage_change: percentage_change,
+          change_direction: change_direction
+        }
+      })
+    else
+      {:error, message} when is_binary(message) ->
+        bad_request(conn, message)
+    end
+  end
+
+  defp parse_date(nil), do: {:error, "Date parameter is required"}
+  defp parse_date(date_string) do
+    case Date.from_iso8601(date_string) do
+      {:ok, date} -> {:ok, date}
+      _ -> {:error, "Invalid date format. Use ISO 8601 format (YYYY-MM-DD)"}
+    end
+  end
+
+  defp parse_metric(nil), do: {:ok, :visitors}
+  defp parse_metric(metric_string) do
+    case Plausible.Stats.Metrics.from_string(metric_string) do
+      {:ok, metric} -> {:ok, metric}
+      _ -> {:ok, :visitors}
+    end
+  end
+
+  defp get_change_direction(nil), do: "not_applicable"
+  defp get_change_direction(percentage) when percentage > 0, do: "increase"
+  defp get_change_direction(percentage) when percentage < 0, do: "decrease"
+  defp get_change_direction(_), do: "no_change"
+
   defp with_imported_switch_info(%Jason.OrderedObject{} = meta) do
     case {meta[:imports_included], meta[:imports_skip_reason]} do
       {true, nil} ->
@@ -1788,6 +1868,87 @@ defmodule PlausibleWeb.Api.StatsController do
   end
 
   defp realtime_period_to_30m(params), do: params
+
+  def predefined_periods(conn, _params) do
+    now = DateTime.utc_now() |> DateTime.to_date()
+
+    periods = [
+      %{
+        label: "This week vs last week",
+        primary_period: "this_week",
+        comparison_period: "last_week",
+        primary_date_range: date_range_for_period("this_week", now),
+        comparison_date_range: date_range_for_period("last_week", now)
+      },
+      %{
+        label: "This month vs last month",
+        primary_period: "this_month",
+        comparison_period: "last_month",
+        primary_date_range: date_range_for_period("this_month", now),
+        comparison_date_range: date_range_for_period("last_month", now)
+      },
+      %{
+        label: "This quarter vs last quarter",
+        primary_period: "this_quarter",
+        comparison_period: "last_quarter",
+        primary_date_range: date_range_for_period("this_quarter", now),
+        comparison_date_range: date_range_for_period("last_quarter", now)
+      },
+      %{
+        label: "This year vs last year",
+        primary_period: "this_year",
+        comparison_period: "last_year",
+        primary_date_range: date_range_for_period("this_year", now),
+        comparison_date_range: date_range_for_period("last_year", now)
+      }
+    ]
+
+    json(conn, %{periods: periods})
+  end
+
+  defp date_range_for_period("this_week", now) do
+    {Date.beginning_of_week(now, :week) |> Date.to_iso8601(),
+     Date.end_of_week(now, :week) |> Date.to_iso8601()}
+  end
+
+  defp date_range_for_period("last_week", now) do
+    last_week_start = now |> Date.beginning_of_week(:week) |> Date.add(-7)
+    {Date.to_iso8601(last_week_start), Date.to_iso8601(Date.add(last_week_start, 6))}
+  end
+
+  defp date_range_for_period("this_month", now) do
+    {Date.beginning_of_month(now) |> Date.to_iso8601(),
+     Date.end_of_month(now) |> Date.to_iso8601()}
+  end
+
+  defp date_range_for_period("last_month", now) do
+    last_month = Date.add(now, -30) |> Date.beginning_of_month()
+    {Date.to_iso8601(last_month), Date.end_of_month(last_month) |> Date.to_iso8601()}
+  end
+
+  defp date_range_for_period("this_quarter", now) do
+    quarter_month = (div(Date.month(now) - 1, 3) * 3) + 1
+    quarter_start = %{now | month: quarter_month, day: 1}
+    quarter_end = quarter_start |> Date.add(89) |> Date.end_of_month()
+    {Date.to_iso8601(quarter_start), Date.to_iso8601(min(quarter_end, now))}
+  end
+
+  defp date_range_for_period("last_quarter", now) do
+    quarter_month = (div(Date.month(now) - 1, 3) * 3) + 1
+    this_quarter_start = %{now | month: quarter_month, day: 1}
+    last_quarter_start = this_quarter_start |> Date.add(-90)
+    last_quarter_end = last_quarter_start |> Date.add(89) |> Date.end_of_month()
+    {Date.to_iso8601(last_quarter_start), Date.to_iso8601(last_quarter_end)}
+  end
+
+  defp date_range_for_period("this_year", now) do
+    {Date.beginning_of_year(now) |> Date.to_iso8601(), Date.to_iso8601(now)}
+  end
+
+  defp date_range_for_period("last_year", now) do
+    last_year = now.year - 1
+    {Date.to_iso8601(Date.new!(last_year, 1, 1)), Date.to_iso8601(Date.new!(last_year, 12, 31))}
+  end
 
   defp toplevel_goal_filter?(query) do
     Filters.filtering_on_dimension?(query, "event:goal",

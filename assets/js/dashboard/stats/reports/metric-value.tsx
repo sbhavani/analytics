@@ -84,9 +84,21 @@ export default function MetricValue(props: {
     ? percentageFormatter(percentageValue)
     : null
 
-  if (value === null && (!comparison || comparison.value === null)) {
-    return <span data-testid="metric-value">{displayFormatter(value)}</span>
+  // Show "No data available" only when:
+  // 1. There IS a comparison and both primary value AND comparison value are null
+  const bothValuesNull = comparison && value === null && comparison.value === null
+
+  if (bothValuesNull) {
+    return (
+      <span className="text-gray-400 dark:text-gray-500 text-sm" data-testid="metric-value">
+        No data available
+      </span>
+    )
   }
+
+  // Detect partial data: one period has data, the other doesn't
+  const hasPartialData = comparison && ((value !== null && comparison.value === null) ||
+    (value === null && comparison.value !== null))
 
   const valueContent = (
     <span
@@ -98,14 +110,20 @@ export default function MetricValue(props: {
           {percentageDisplay}
         </span>
       )}
-      {displayFormatter(value)}
-      {comparison ? (
+      {value !== null ? displayFormatter(value) : (
+        <span className="text-gray-400 dark:text-gray-500">No data available</span>
+      )}
+      {comparison && !hasPartialData ? (
         <ChangeArrow
           change={comparison.change}
           metric={metric}
           className="inline-block pl-1 w-4"
           hideNumber
         />
+      ) : comparison && hasPartialData ? (
+        <span className="text-gray-400 dark:text-gray-500 text-xs ml-1">
+          (No comparison data)
+        </span>
       ) : null}
     </span>
   )
@@ -179,7 +197,13 @@ function ComparisonTooltipContent({
         <div className="w-full border-t border-gray-600"></div>
         <div>
           <div className="font-medium text-sm/6 text-gray-300/80">
-            {longFormatter(comparison.value)} {label}
+            {comparison.value !== null ? (
+              <>
+                {longFormatter(comparison.value)} {label}
+              </>
+            ) : (
+              <span className="text-gray-500 italic">No data available</span>
+            )}
           </div>
           <div className="font-normal text-xs text-gray-300/80">
             {meta.comparison_date_range_label}

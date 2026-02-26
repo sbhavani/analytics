@@ -517,4 +517,105 @@ defmodule Plausible.Stats.ComparisonsTest do
       assert comparison_query.utc_time_range.last == ~U[2023-03-08 18:30:00Z]
     end
   end
+
+  describe "date range validation" do
+    test "custom date range comparison accepts valid date range", %{site: site} do
+      # Valid: start date is before end date
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-15]},
+          include: [compare: {:date_range, ~D[2022-12-01], ~D[2022-12-15]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      assert comparison_query.utc_time_range.first == ~U[2022-12-01 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-12-15 23:59:59Z]
+    end
+
+    test "custom date range comparison works with same start and end date", %{site: site} do
+      # Valid: single day range
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-01]},
+          include: [compare: {:date_range, ~D[2022-01-01], ~D[2022-01-01]}]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      assert comparison_query.utc_time_range.first == ~U[2022-01-01 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-01-01 23:59:59Z]
+    end
+
+    test "custom date range comparison rejects when comparison start is after end", %{site: site} do
+      # Invalid: comparison start date is after end date
+      assert_raise ArgumentError, fn ->
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-15]},
+          include: [compare: {:date_range, ~D[2022-12-20], ~D[2022-12-10]}]
+        )
+      end
+    end
+
+    test "custom date range comparison rejects when primary start is after end", %{site: site} do
+      # Invalid: primary start date is after end date
+      assert_raise ArgumentError, fn ->
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-20], ~D[2023-01-10]},
+          include: [compare: {:date_range, ~D[2022-12-01], ~D[2022-12-15]}]
+        )
+      end
+    end
+
+    test "date range within 366 days is valid", %{site: site} do
+      # Exactly 366 days - should be valid
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2024-01-01]},
+          include: [compare: :previous_period]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      assert comparison_query.utc_time_range.first == ~U[2021-12-31 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2022-12-31 23:59:59Z]
+    end
+
+    test "previous_period mode handles short date ranges correctly", %{site: site} do
+      # 3-day range
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-01-01], ~D[2023-01-03]},
+          include: [compare: :previous_period]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Previous period shifts back by the same number of days (2 days between Jan 1-3)
+      assert comparison_query.utc_time_range.first == ~U[2022-12-30 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2023-01-01 23:59:59Z]
+    end
+
+    test "previous_period mode handles year boundary correctly", %{site: site} do
+      # Date range crossing year boundary
+      query =
+        QueryBuilder.build!(site,
+          metrics: [:visitors],
+          input_date_range: {:date_range, ~D[2023-12-29], ~D[2024-01-02]},
+          include: [compare: :previous_period]
+        )
+
+      comparison_query = Comparisons.get_comparison_query(query)
+
+      # Should shift back 4 days
+      assert comparison_query.utc_time_range.first == ~U[2023-12-25 00:00:00Z]
+      assert comparison_query.utc_time_range.last == ~U[2023-12-29 23:59:59Z]
+    end
+  end
 end
