@@ -1,10 +1,73 @@
 defmodule Plausible.SegmentsTest do
   use ExUnit.Case
   use Plausible.DataCase, async: true
-  doctest Plausible.Segments, import: true
+  use Plausible.EctoCase
+
+  alias Plausible.Segments
   alias Plausible.Segments.Segment
+  alias Plausible.Segments.FiltersConverter
 
   setup [:create_user, :create_site]
+
+  describe("segment CRUD with expression") do
+    test "creates a segment with expression", %{user: user, site: site} do
+      expression = %{
+        version: 1,
+        rootGroup: %{
+          id: "g1",
+          operator: :AND,
+          conditions: [
+            %{id: "c1", field: "country", operator: :equals, value: "US"}
+          ]
+        }
+      }
+
+      segment_data = FiltersConverter.build_segment_data(expression, %{})
+
+      {:ok, segment} = Segments.create(site, user, %{
+        name: "US Visitors",
+        type: :personal,
+        segment_data: segment_data
+      })
+
+      assert segment.name == "US Visitors"
+      assert segment.site_id == site.id
+      assert segment.type == :personal
+      assert segment.segment_data["expression"]["version"] == 1
+    end
+
+    test "creates a segment with nested groups", %{user: user, site: site} do
+      expression = %{
+        version: 1,
+        rootGroup: %{
+          id: "g1",
+          operator: :OR,
+          conditions: [
+            %{
+              id: "g2",
+              operator: :AND,
+              conditions: [
+                %{id: "c1", field: "country", operator: :equals, value: "US"},
+                %{id: "c2", field: "pageviews", operator: :greater_than, value: 10}
+              ]
+            },
+            %{id: "c3", field: "country", operator: :equals, value: "UK"}
+          ]
+        }
+      }
+
+      segment_data = FiltersConverter.build_segment_data(expression, %{})
+
+      {:ok, segment} = Segments.create(site, user, %{
+        name: "US or UK High Value",
+        type: :personal,
+        segment_data: segment_data
+      })
+
+      assert segment.name == "US or UK High Value"
+      assert segment.segment_data["expression"]["rootGroup"]["operator"] == :OR
+    end
+  end
 
   describe("searching segments by name") do
     for input <- [nil, "", " ", "\n", " \t"] do
