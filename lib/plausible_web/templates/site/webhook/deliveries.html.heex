@@ -1,0 +1,108 @@
+<div class="container">
+  <.settings_tiles>
+    <.tile>
+      <:title>Webhook Deliveries</:title>
+      <:subtitle>View delivery history for <%= @webhook.endpoint_url %></:subtitle>
+
+      <div class="flex flex-col gap-4">
+        <div class="flex justify-between items-center">
+          <div class="flex gap-2">
+            <.styled_link href={"/#{@site.domain}/settings/webhooks?status=all"} theme={if @status == "all", do: "primary"}>
+              All
+            </.styled_link>
+            <.styled_link href={"/#{@site.domain}/settings/webhooks?status=success"} theme={if @status == "success", do: "primary"}>
+              Success
+            </.styled_link>
+            <.styled_link href={"/#{@site.domain}/settings/webhooks?status=failed"} theme={if @status == "failed", do: "primary"}>
+              Failed
+            </.styled_link>
+          </div>
+          <div class="text-sm text-gray-500">
+            <%= @total %> deliveries
+          </div>
+        </div>
+
+        <%= if @deliveries == [] do %>
+          <.empty_state title="No deliveries yet">
+            <p class="py-2">Webhook deliveries will appear here once events are triggered.</p>
+          </.empty_state>
+        <% else %>
+          <div class="border-t border-gray-200">
+            <table class="w-full">
+              <thead>
+                <tr class="text-left text-sm text-gray-500">
+                  <th class="py-3">Event</th>
+                  <th class="py-3">Status</th>
+                  <th class="py-3">Response</th>
+                  <th class="py-3">Attempt</th>
+                  <th class="py-3">Date</th>
+                  <th class="py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <%= for delivery <- @deliveries do %>
+                  <tr class="border-t border-gray-200">
+                    <td class="py-3 font-mono text-sm"><%= delivery.event_type %></td>
+                    <td class="py-3">
+                      <span class={"px-2 py-1 text-xs rounded-full #{if delivery.status == "success", do: "bg-green-100 text-green-800", else: "bg-red-100 text-red-800"}"}>
+                        <%= delivery.status %>
+                      </span>
+                    </td>
+                    <td class="py-3 text-sm">
+                      <%= if delivery.response_code do %>
+                        <%= delivery.response_code %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td class="py-3 text-sm">
+                      <%= delivery.attempt_number %>/3
+                    </td>
+                    <td class="py-3 text-sm text-gray-500">
+                      <%= if delivery.inserted_at do %>
+                        <%= Calendar.strftime(delivery.inserted_at, "%Y-%m-%d %H:%M:%S") %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td class="py-3">
+                      <%= if delivery.status == "failed" && delivery.attempt_number < 3 do %>
+                        <.styled_link href={"/#{@site.domain}/settings/webhooks/#{@webhook.id}/deliveries/#{delivery.id}/retry"} method="post">
+                          Retry
+                        </.styled_link>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex justify-center gap-2">
+            <%= if @page > 1 do %>
+              <.styled_link href={"/#{@site.domain}/settings/webhooks/#{@webhook.id}/deliveries?page=#{@page - 1}&status=#{@status}"}>
+                Previous
+              </.styled_link>
+            <% end %>
+
+            <span class="text-sm text-gray-500">
+              Page <%= @page %> of <%= @total_pages %>
+            </span>
+
+            <%= if @page < @total_pages do %>
+              <.styled_link href={"/#{@site.domain}/settings/webhooks/#{@webhook.id}/deliveries?page=#{@page + 1}&status=#{@status}"}>
+                Next
+              </.styled_link>
+            <% end %>
+          </div>
+        <% end %>
+
+        <div class="pt-4">
+          <.styled_link href={"/#{@site.domain}/settings/webhooks"}>
+            Back to Webhooks
+          </.styled_link>
+        </div>
+      </div>
+    </.tile>
+  </.settings_tiles>
+</div>

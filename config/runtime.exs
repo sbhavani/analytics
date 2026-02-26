@@ -804,6 +804,8 @@ base_cron = [
   {"30 */2 * * *", Plausible.Workers.CleanUserSessions},
   # Every 2 hours
   {"0 */2 * * *", Plausible.Workers.ExpireDomainChangeTransitions},
+  # Daily at 3am
+  {"0 3 * * *", Plausible.Workers.CleanWebhookDeliveries},
   # Daily at midnight
   {"0 0 * * *", Plausible.Workers.LocationsSync}
 ]
@@ -842,7 +844,9 @@ base_queues = [
   domain_change_transition: 1,
   check_accept_traffic_until: 1,
   clickhouse_clean_sites: 1,
-  locations_sync: 1
+  locations_sync: 1,
+  webhook_delivery: 5,
+  clean_webhook_deliveries: 1
 ]
 
 cloud_queues = [

@@ -1,0 +1,36 @@
+<div class="container">
+  <.settings_tiles>
+    <.tile>
+      <:title>Add Webhook</:title>
+      <:subtitle>Configure a new webhook endpoint</:subtitle>
+
+      <%= form_for @changeset, "/#{@site.domain}/settings/webhooks", [class: "flex flex-col gap-4"], fn f -> %>
+        <div class="flex flex-col gap-2">
+          <%= label f, :endpoint_url, "Endpoint URL", class: "text-sm font-medium" %>
+          <%= text_input f, :endpoint_url, placeholder: "https://example.com/webhook", class: "input w-full" %>
+          <%= error_tag f, :endpoint_url %>
+          <p class="text-xs text-gray-500">The URL that will receive HTTP POST requests when events occur.</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <%= label f, :secret, "Secret Key", class: "text-sm font-medium" %>
+          <%= text_input f, :secret, placeholder: "Leave empty to auto-generate", class: "input w-full" %>
+          <%= error_tag f, :secret %>
+          <p class="text-xs text-gray-500">Used to sign webhook payloads. Minimum 16 characters. Leave empty to auto-generate.</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2">
+            <%= checkbox f, :is_active, class: "rounded" %>
+            <span class="text-sm font-medium">Enable webhook</span>
+          </label>
+        </div>
+
+        <div class="flex gap-4">
+          <.button type="submit" theme="primary">Create Webhook</.button>
+          <.styled_link href={"/#{@site.domain}/settings/webhooks"}>Cancel</.styled_link>
+        </div>
+      <% end %>
+    </.tile>
+  </.settings_tiles>
+</div>

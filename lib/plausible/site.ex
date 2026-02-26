@@ -65,6 +65,8 @@ defmodule Plausible.Site do
 
     has_many :completed_imports, Plausible.Imported.SiteImport, where: [status: :completed]
 
+    has_many :webhook_configs, Plausible.WebhookNotifications.WebhookConfig
+
     timestamps()
   end
 
