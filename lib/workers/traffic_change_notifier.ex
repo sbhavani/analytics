@@ -62,6 +62,15 @@ defmodule Plausible.Workers.TrafficChangeNotifier do
       send_spike_notification(recipient_email, notification.site, stats)
     end
 
+    # Trigger webhook notifications
+    Plausible.Webhooks.trigger_spike_webhooks(
+      notification.site,
+      stats.current_visitors,
+      notification.threshold,
+      Map.get(stats, :sources, []),
+      Map.get(stats, :pages, [])
+    )
+
     notification
     |> TrafficChangeNotification.was_sent(now)
     |> Repo.update()
@@ -71,6 +80,13 @@ defmodule Plausible.Workers.TrafficChangeNotifier do
     for recipient_email <- notification.recipients do
       send_drop_notification(recipient_email, notification.site, current_visitors)
     end
+
+    # Trigger webhook notifications
+    Plausible.Webhooks.trigger_drop_webhooks(
+      notification.site,
+      current_visitors,
+      notification.threshold
+    )
 
     notification
     |> TrafficChangeNotification.was_sent(now)
