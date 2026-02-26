@@ -842,7 +842,8 @@ base_queues = [
   domain_change_transition: 1,
   check_accept_traffic_until: 1,
   clickhouse_clean_sites: 1,
-  locations_sync: 1
+  locations_sync: 1,
+  webhooks: 20
 ]
 
 cloud_queues = [
