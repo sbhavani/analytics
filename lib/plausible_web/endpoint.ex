@@ -78,6 +78,14 @@ defmodule PlausibleWeb.Endpoint do
     json_decoder: Phoenix.json_library()
   )
 
+  # Absinthe GraphQL configuration
+  # This enables schema introspection and direct GraphQL query handling
+  plug Absinthe.Plug,
+    schema: PlausibleWeb.GraphQL.Schema,
+    json_codec: Phoenix.json_library(),
+    analyze_complexity: true,
+    max_complexity: 1000
+
   plug(Sentry.PlugContext)
 
   plug(Plug.MethodOverride)
