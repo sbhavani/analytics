@@ -382,6 +382,13 @@ defmodule PlausibleWeb.Router do
           put "/goals", ExternalSitesController, :find_or_create_goal
           delete "/goals/:goal_id", ExternalSitesController, :delete_goal
 
+          get "/webhooks", WebhookController, :index
+          post "/webhooks", WebhookController, :create
+          get "/webhooks/:webhook_id", WebhookController, :show
+          patch "/webhooks/:webhook_id", WebhookController, :update
+          delete "/webhooks/:webhook_id", WebhookController, :delete
+          post "/webhooks/:webhook_id/ping", WebhookController, :ping
+
           put "/custom-props", ExternalSitesController, :add_custom_prop
           # Property name can contain forward slashes, hence we match on wildcard here
           delete "/custom-props/*property", ExternalSitesController, :delete_custom_prop
