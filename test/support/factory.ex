@@ -392,6 +392,25 @@ defmodule Plausible.Factory do
     }
   end
 
+  def webhook_factory do
+    %Plausible.Webhooks.Webhook{
+      url: "https://example.com/webhook",
+      secret: "test-secret-#{:rand.uniform(10000)}",
+      triggers: ["goal.completed"],
+      active: true,
+      name: "Test Webhook"
+    }
+  end
+
+  def webhook_delivery_factory do
+    %Plausible.Webhooks.WebhookDelivery{
+      event_type: "goal.completed",
+      payload: %{event: "goal.completed", data: %{}},
+      status: :pending,
+      retry_count: 0
+    }
+  end
+
   defp hash_key() do
     Keyword.fetch!(
       Application.get_env(:plausible, PlausibleWeb.Endpoint),
