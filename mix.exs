@@ -150,6 +150,8 @@ defmodule Plausible.MixProject do
       {:zxcvbn, git: "https://github.com/techgaun/zxcvbn-elixir.git"},
       {:open_api_spex, "~> 3.22.1"},
       {:joken, "~> 2.5"},
+      {:absinthe, "~> 1.7"},
+      {:absinthe_relay, "~> 1.5"},
       {:paginator, git: "https://github.com/duffelhq/paginator.git"},
       {:scrivener_ecto, "~> 3.1"},
       {:esbuild, "~> 0.7", runtime: Mix.env() in [:dev, :ce_dev]},

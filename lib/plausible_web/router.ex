@@ -421,6 +421,11 @@ defmodule PlausibleWeb.Router do
 
       get "/sites", Api.InternalController, :sites
     end
+
+    scope "/graphql" do
+      pipe_through :api
+      post "/", GraphQLController, :execute
+    end
   end
 
   scope "/", PlausibleWeb do
