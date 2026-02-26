@@ -48,3 +48,10 @@
     opacity: 1;
   }
 }
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .loading div {
+    animation: none;
+  }
+}

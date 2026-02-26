@@ -35,7 +35,17 @@ defmodule PlausibleWeb.Components.Layout do
           var htmlRef = document.querySelector('html');
           var hcaptchaRefs = Array.from(document.getElementsByClassName('h-captcha'));
 
-          var isDark = themePref === 'dark' || (themePref === 'system' && darkMediaPref);
+          // Check localStorage first for user preference
+          var storedPref = null;
+          try {
+            storedPref = localStorage.getItem('theme_preference');
+          } catch (e) {
+            // localStorage may not be available
+          }
+
+          // Use stored preference if available, otherwise fall back to server preference
+          var effectivePref = storedPref || themePref;
+          var isDark = effectivePref === 'dark' || (effectivePref === 'system' && darkMediaPref);
 
           if (isDark) {
               htmlRef.classList.add('dark')

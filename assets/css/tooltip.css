@@ -42,3 +42,14 @@
 [tooltip]:hover::before {
   opacity: 1;
 }
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  [tooltip]::before {
+    transition: none;
+  }
+
+  [tooltip]::after {
+    transition: none;
+  }
+}

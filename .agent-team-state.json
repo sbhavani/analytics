@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "workflow_type": "feature",
+  "phase": "DEV_IMPLEMENT",
+  "feature": {
+    "feature": "Add dark mode: implement theme switching with dark mode opti",
+    "description": "Add dark mode: implement theme switching with dark mode option that persists user preference and applies consistent styling across the dashboard.",
+    "rationale": "Manually specified via --feature flag",
+    "priority": "P1"
+  },
+  "pm_session": null,
+  "dev_session": "aef093c5-cb49-459e-b726-01482fb3fb10",
+  "pr_url": null,
+  "branch_name": "003-dark-mode",
+  "worker_handoff": false,
+  "original_path": "/Users/sb/code/analytics",
+  "worktree_path": "/var/folders/yl/x7v44_357r1ck73mr69d_lzc0000gn/T/agent-team-analytics-20260226-072723-46d092",
+  "thread_root_id": null,
+  "started_at": "2026-02-26T13:29:36.566830+00:00",
+  "updated_at": "2026-02-26T14:01:11.903635+00:00"
+}
