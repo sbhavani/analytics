@@ -153,6 +153,27 @@ defmodule Plausible.Segments.Segment do
       _ -> false
     end
   end
+
+  @doc """
+  Validates a filter tree structure.
+
+  This function accepts a filter tree map with root_group and version keys,
+  validates the structure, and returns :ok or an error tuple.
+  """
+  @spec validate_filter_tree(map()) :: :ok | {:error, String.t()}
+  def validate_filter_tree(%{"filter_tree" => filter_tree}) do
+    validate_filter_tree(filter_tree)
+  end
+
+  def validate_filter_tree(%{"root_group" => root_group}) do
+    Plausible.Segments.FilterTree.validate(%{root_group: root_group, version: 1})
+    |> case do
+      %{valid: true} -> :ok
+      %{errors: errors} -> {:error, Enum.join(errors, ", ")}
+    end
+  end
+
+  def validate_filter_tree(_), do: :ok
 end
 
 defimpl Jason.Encoder, for: Plausible.Segments.Segment do
