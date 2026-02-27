@@ -15,6 +15,7 @@ defmodule Plausible.Segments.Segment do
     field :name, :string
     field :type, Ecto.Enum, values: @segment_types
     field :segment_data, :map
+    field :filter_tree, :map
 
     # owner ID can be null (aka segment is dangling) when the original owner is deassociated from the site
     # the segment is dangling until another user edits it: the editor becomes the new owner
@@ -29,18 +30,36 @@ defmodule Plausible.Segments.Segment do
     |> cast(attrs, [
       :name,
       :segment_data,
+      :filter_tree,
       :site_id,
       :type,
       :owner_id
     ])
-    |> validate_required([:name, :segment_data, :site_id, :type, :owner_id])
+    |> validate_required([:name, :site_id, :type, :owner_id])
     |> validate_length(:name, count: :bytes, min: 1, max: 255)
     |> foreign_key_constraint(:site_id)
     |> foreign_key_constraint(:owner_id)
+    |> validate_filter_tree_or_segment_data()
     |> validate_only_known_properties_present()
     |> validate_segment_data_filters()
     |> validate_segment_data_labels()
     |> validate_json_byte_length(:segment_data, max: 5 * 1024)
+    |> validate_json_byte_length(:filter_tree, max: 10 * 1024)
+  end
+
+  # At least one of segment_data or filter_tree must be present
+  defp validate_filter_tree_or_segment_data(%Ecto.Changeset{} = changeset) do
+    segment_data = get_field(changeset, :segment_data)
+    filter_tree = get_field(changeset, :filter_tree)
+
+    cond do
+      is_map(segment_data) and map_size(segment_data) > 0 ->
+        changeset
+      is_map(filter_tree) and map_size(filter_tree) > 0 ->
+        changeset
+      true ->
+        add_error(changeset, :segment_data, "at least one of segment_data or filter_tree is required")
+    end
   end
 
   defp validate_only_known_properties_present(%Ecto.Changeset{} = changeset) do
@@ -157,16 +176,30 @@ end
 
 defimpl Jason.Encoder, for: Plausible.Segments.Segment do
   def encode(%Plausible.Segments.Segment{} = segment, opts) do
-    %{
+    result = %{
       id: segment.id,
       name: segment.name,
       type: segment.type,
-      segment_data: segment.segment_data,
       owner_id: segment.owner_id,
       owner_name: if(is_nil(segment.owner_id), do: nil, else: segment.owner.name),
       inserted_at: segment.inserted_at,
       updated_at: segment.updated_at
     }
-    |> Jason.Encode.map(opts)
+
+    result =
+      if segment.segment_data do
+        Map.put(result, :segment_data, segment.segment_data)
+      else
+        result
+      end
+
+    result =
+      if segment.filter_tree do
+        Map.put(result, :filter_tree, segment.filter_tree)
+      else
+        result
+      end
+
+    Jason.Encode.map(result, opts)
   end
 end
