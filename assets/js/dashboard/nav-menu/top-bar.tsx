@@ -8,6 +8,7 @@ import { FilterMenu } from './filter-menu'
 import { FiltersBar } from './filters-bar'
 import { DashboardPeriodPicker } from './query-periods/dashboard-period-picker'
 import { SegmentMenu } from './segments/segment-menu'
+import { ThemeToggle } from '../components/theme-toggle'
 
 interface TopBarProps {
   showCurrentVisitors: boolean
@@ -71,6 +72,7 @@ function TopBarInner({ showCurrentVisitors }: TopBarProps) {
         <FilterMenu />
         <SegmentMenu />
         <DashboardPeriodPicker />
+        <ThemeToggle />
       </div>
     </div>
   )
