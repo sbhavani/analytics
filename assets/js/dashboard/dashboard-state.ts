@@ -31,6 +31,28 @@ export type Filter = [FilterOperator, FilterKey, FilterClause[]]
  * */
 export type FilterClauseLabels = Record<string, string>
 
+export type FilterOperatorType = 'is' | 'is_not' | 'contains' | 'contains_not' | 'has_not_done' | 'matches' | 'does_not_match' | 'is_set' | 'is_not_set' | 'greater_than' | 'less_than'
+
+export type GroupOperatorType = 'and' | 'or'
+
+export type FilterCondition = {
+  id?: string
+  dimension: string
+  operator: FilterOperatorType
+  values: string[]
+}
+
+export type FilterGroup = {
+  id?: string
+  operator: GroupOperatorType
+  children: (FilterGroup | FilterCondition)[]
+}
+
+export type FilterTree = {
+  root_group: FilterGroup
+  version: number
+}
+
 export type DashboardState = {
   period: DashboardPeriod
   comparison: ComparisonMode | null
@@ -50,6 +72,11 @@ export type DashboardState = {
   resolvedFilters: Filter[]
   labels: FilterClauseLabels
   with_imported: boolean
+  /**
+   * Filter tree for advanced filtering with nested AND/OR groups.
+   * When present, this takes precedence over the flat `filters` array.
+   */
+  filterTree?: FilterTree
 }
 
 export const dashboardStateDefaultValue: DashboardState = {
