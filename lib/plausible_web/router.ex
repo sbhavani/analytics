@@ -313,9 +313,13 @@ defmodule PlausibleWeb.Router do
 
     scope "/:domain/segments", PlausibleWeb.Api.Internal,
       private: %{allow_consolidated_views: true} do
+      get "/", SegmentsController, :list
       post "/", SegmentsController, :create
+      get "/:segment_id", SegmentsController, :get
       patch "/:segment_id", SegmentsController, :update
       delete "/:segment_id", SegmentsController, :delete
+      post "/:segment_id/duplicate", SegmentsController, :duplicate
+      post "/preview", SegmentsController, :preview
       get "/:segment_id/shared-links", SegmentsController, :get_related_shared_links
     end
   end

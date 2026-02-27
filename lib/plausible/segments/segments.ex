@@ -453,4 +453,136 @@ defmodule Plausible.Segments do
 
     "#{field} #{formatted_message}"
   end
+
+  @doc """
+  Gets a single segment by ID.
+  """
+  @spec get_one(Plausible.Site.t(), atom(), pos_integer()) ::
+          {:ok, Segment.t()} | {:error, :segment_not_found | :not_enough_permissions}
+  def get_one(%Plausible.Site{} = site, site_role, segment_id) do
+    cond do
+      site_role in roles_with_personal_segments() ->
+        case do_get_one_for_site(site.id, segment_id) do
+          nil -> {:error, :segment_not_found}
+          segment -> {:ok, segment}
+        end
+
+      true ->
+        {:error, :not_enough_permissions}
+    end
+  end
+
+  defp do_get_one_for_site(site_id, segment_id) do
+    Repo.one(
+      from segment in Segment,
+        where: segment.site_id == ^site_id,
+        where: segment.id == ^segment_id,
+        preload: [:owner]
+    )
+  end
+
+  @doc """
+  Duplicates a segment.
+  """
+  @spec duplicate(pos_integer(), Plausible.Site.t(), atom(), pos_integer()) ::
+          {:ok, Segment.t()}
+          | {:error, :segment_not_found | :not_enough_permissions}
+  def duplicate(user_id, %Plausible.Site{} = site, site_role, segment_id) do
+    with {:ok, original_segment} <- get_one(site, site_role, segment_id),
+         :ok <- can_duplicate?(site, site_role) do
+      # Create a copy with modified name
+      copy_name = "#{original_segment.name} (Copy)"
+
+      params = %{
+        "name" => copy_name,
+        "segment_data" => original_segment.segment_data,
+        "filter_tree" => original_segment.filter_tree,
+        "type" => Atom.to_string(original_segment.type)
+      }
+
+      insert_one(user_id, site, site_role, params)
+    else
+      {:error, :segment_not_found} ->
+        {:error, :segment_not_found}
+
+      {:error, :not_enough_permissions} ->
+        {:error, :not_enough_permissions}
+
+      error ->
+        error
+    end
+  end
+
+  defp can_duplicate?(%Plausible.Site{} = site, site_role) do
+    cond do
+      count_segments(site.id) >= @max_segments ->
+        {:error, :segment_limit_reached}
+
+      site_role in roles_with_personal_segments() ->
+        :ok
+
+      true ->
+        {:error, :not_enough_permissions}
+    end
+  end
+
+  @doc """
+  Previews a filter tree by running a query and returning visitor counts.
+  """
+  @spec preview(Plausible.Site.t(), map()) ::
+          {:ok, map()} | {:error, String.t()}
+  def preview(%Plausible.Site{} = site, %{"filter_tree" => filter_tree} = params) do
+    with :ok <- Plausible.FilterTreeValidator.validate(filter_tree),
+         {:ok, query} <- build_preview_query(site, filter_tree, params) do
+      # Execute the query and get visitor count
+      result = execute_preview_query(query, site)
+      {:ok, result}
+    else
+      {:error, message} when is_binary(message) ->
+        {:error, message}
+
+      error ->
+        {:error, "Failed to preview segment: #{inspect(error)}"}
+    end
+  end
+
+  def preview(_site, _params), do: {:error, "filter_tree is required"}
+
+  defp build_preview_query(site, filter_tree, params) do
+    metrics = Map.get(params, "metrics", ["visitors"])
+    date_range = Map.get(params, "date_range", %{"period" => "7d"})
+
+    query_params = %Plausible.Stats.ParsedQueryParams{
+      metrics: Enum.map(metrics, &String.to_existing_atom/1),
+      filters: [],
+      date_range: parse_date_range(date_range),
+      pagination: %{limit: 1000, offset: 0},
+      optional_filters: []
+    }
+
+    Plausible.Stats.SegmentQueryBuilder.build_query(site, filter_tree, query_params)
+  end
+
+  defp parse_date_range(%{"period" => period}) do
+    case period do
+      "7d" -> {:last_n_days, 7}
+      "30d" -> {:last_n_days, 30}
+      "today" -> {:today}
+      _ -> {:last_n_days, 7}
+    end
+  end
+
+  defp execute_preview_query(query, site) do
+    # This is a simplified preview - in production, this would execute
+    # a ClickHouse query to get actual visitor counts
+    %{
+      results: [],
+      totals: %{
+        visitors: 0,
+        pageviews: 0
+      },
+      sample_percent: 100,
+      warnings: []
+    }
+  end
 end

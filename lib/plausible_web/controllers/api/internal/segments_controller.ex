@@ -8,6 +8,95 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
   alias PlausibleWeb.Api.Helpers, as: H
   alias Plausible.Segments
 
+  def list(
+        %Plug.Conn{
+          assigns: %{
+            site: site,
+            site_role: site_role
+          }
+        } = conn,
+        _params
+      ) do
+    case Segments.get_all_for_site(site, site_role) do
+      {:ok, segments} ->
+        json(conn, %{segments: segments})
+
+      {:error, :not_enough_permissions} ->
+        H.not_enough_permissions(conn, "Not enough permissions to list segments")
+    end
+  end
+
+  def get(
+        %Plug.Conn{
+          assigns: %{
+            site: site,
+            site_role: site_role
+          }
+        } = conn,
+        %{} = params
+      ) do
+    segment_id = normalize_segment_id_param(params["segment_id"])
+
+    case Segments.get_one(site, site_role, segment_id) do
+      {:ok, segment} ->
+        json(conn, segment)
+
+      {:error, :not_enough_permissions} ->
+        H.not_enough_permissions(conn, "Not enough permissions to get segment")
+
+      {:error, :segment_not_found} ->
+        segment_not_found(conn, params["segment_id"])
+    end
+  end
+
+  def duplicate(
+        %Plug.Conn{
+          assigns: %{
+            site: site,
+            current_user: %{id: user_id},
+            site_role: site_role
+          }
+        } = conn,
+        %{} = params
+      ) do
+    segment_id = normalize_segment_id_param(params["segment_id"])
+
+    case Segments.duplicate(user_id, site, site_role, segment_id) do
+      {:ok, segment} ->
+        json(conn, segment)
+
+      {:error, :not_enough_permissions} ->
+        H.not_enough_permissions(conn, "Not enough permissions to duplicate segment")
+
+      {:error, :segment_not_found} ->
+        segment_not_found(conn, params["segment_id"])
+    end
+  end
+
+  def preview(
+        %Plug.Conn{
+          assigns: %{
+            site: site
+          }
+        } = conn,
+        %{} = params
+      ) do
+    case Segments.preview(site, params) do
+      {:ok, preview_result} ->
+        json(conn, preview_result)
+
+      {:error, :invalid_filter_tree} ->
+        conn
+        |> put_status(400)
+        |> json(%{error: "Invalid filter tree format"})
+
+      {:error, message} when is_binary(message) ->
+        conn
+        |> put_status(400)
+        |> json(%{error: message})
+    end
+  end
+
   def create(
         %Plug.Conn{
           assigns: %{
