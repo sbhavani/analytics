@@ -35,6 +35,8 @@
       action={Routes.settings_path(@conn, :update_theme)}
       for={@theme_changeset}
       method="post"
+      id="theme-form"
+      class="theme-ajax-form"
     >
       <.input
         type="select"
@@ -45,9 +47,68 @@
         mt?={false}
       />
 
-      <.button type="submit">
+      <.button type="submit" id="theme-submit">
         Change theme
       </.button>
+      <span id="theme-success" class="ml-3 text-green-600 dark:text-green-400 hidden">Saved!</span>
     </.form>
   </.tile>
 </.settings_tiles>
+
+<script>
+(function() {
+  const form = document.getElementById('theme-form');
+  if (!form) return;
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const submitBtn = document.getElementById('theme-submit');
+    const successMsg = document.getElementById('theme-success');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Apply theme immediately
+        const html = document.documentElement;
+        if (data.theme === 'dark') {
+          html.classList.add('dark');
+        } else if (data.theme === 'light') {
+          html.classList.remove('dark');
+        } else if (data.theme === 'system') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            html.classList.add('dark');
+          } else {
+            html.classList.remove('dark');
+          }
+        }
+
+        // Show success message
+        successMsg.classList.remove('hidden');
+        setTimeout(() => {
+          successMsg.classList.add('hidden');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Theme update failed:', err);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Change theme';
+    }
+  });
+})();
+</script>

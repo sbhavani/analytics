@@ -278,15 +278,27 @@ defmodule PlausibleWeb.SettingsController do
     changeset = Auth.User.theme_changeset(conn.assigns.current_user, params)
 
     case Repo.update(changeset) do
-      {:ok, _user} ->
-        conn
-        |> put_flash(:success, "Theme changed")
-        |> redirect(to: Routes.settings_path(conn, :preferences) <> "#update-theme")
+      {:ok, user} ->
+        if json?(conn) do
+          json(conn, %{success: true, theme: user.theme})
+        else
+          conn
+          |> put_flash(:success, "Theme changed")
+          |> redirect(to: Routes.settings_path(conn, :preferences) <> "#update-theme")
+        end
 
       {:error, changeset} ->
-        render_preferences(conn, theme_changeset: changeset)
+        if json?(conn) do
+          conn
+          |> put_status(422)
+          |> json(%{success: false, errors: inspect(changeset.errors)})
+        else
+          render_preferences(conn, theme_changeset: changeset)
+        end
     end
   end
+
+  defp json?(conn), do: Plug.Conn.get_req_header(conn, "content-type") |> Enum.any?(&String.contains?(&1, "application/json"))
 
   defp render_preferences(conn, opts \\ []) do
     name_changeset =
