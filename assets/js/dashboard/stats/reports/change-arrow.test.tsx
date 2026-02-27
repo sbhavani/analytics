@@ -74,3 +74,13 @@ it('renders no content with text hidden and 0 change', () => {
   const arrowElement = screen.getByTestId('change-arrow')
   expect(arrowElement).toHaveTextContent('')
 })
+
+it('renders N/A when change is null (FR-008: N/A for zero baseline)', () => {
+  // When comparison baseline is zero and percentage cannot be calculated,
+  // backend returns null and frontend should show N/A
+  render(<ChangeArrow change={null as unknown as number} className="text-xs" metric="visitors" />)
+
+  const arrowElement = screen.getByTestId('change-arrow')
+  // Null change shows "N/A" to indicate percentage cannot be calculated
+  expect(arrowElement).toHaveTextContent('N/A')
+})
