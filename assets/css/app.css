@@ -35,6 +35,15 @@
   :focus:not(:focus-visible) {
     @apply outline-none;
   }
+
+  /* Smooth theme transition */
+  html {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html.dark {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
 }
 
 @layer components {
