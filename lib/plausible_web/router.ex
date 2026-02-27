@@ -393,6 +393,20 @@ defmodule PlausibleWeb.Router do
           delete "/:site_id", ExternalSitesController, :delete_site
         end
       end
+
+      # Filter Templates and Segment Preview
+      scope assigns: %{api_scope: "sites:read:*"} do
+        pipe_through PlausibleWeb.Plugs.AuthorizePublicAPI
+
+        scope assigns: %{api_context: :site} do
+          get "/:site_id/filter-templates", SegmentController, :list_templates
+          post "/:site_id/filter-templates", SegmentController, :create_template
+          get "/:site_id/filter-templates/:id", SegmentController, :get_template
+          put "/:site_id/filter-templates/:id", SegmentController, :update_template
+          delete "/:site_id/filter-templates/:id", SegmentController, :delete_template
+          post "/:site_id/segments/preview", SegmentController, :preview
+        end
+      end
     end
   end
 
