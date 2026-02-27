@@ -26,8 +26,10 @@ defmodule Plausible.Stats.Compare do
 
   def percent_change(old_count, new_count) do
     cond do
+      # FR-008: When comparison baseline is zero, return nil (N/A)
+      # Cannot calculate meaningful percentage change when there's no previous data
       old_count == 0 and new_count > 0 ->
-        100
+        nil
 
       old_count == 0 and new_count == 0 ->
         0
