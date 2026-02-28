@@ -92,6 +92,11 @@ defmodule PlausibleWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :graphql_api do
+    plug :accepts, ["json"]
+    plug PlausibleWeb.Plugs.RateLimitGraphQL
+  end
+
   on_ee do
     pipeline :flags do
       plug :accepts, ["html"]
@@ -420,6 +425,12 @@ defmodule PlausibleWeb.Router do
       put "/:domain/disable-feature", Api.InternalController, :disable_feature
 
       get "/sites", Api.InternalController, :sites
+    end
+
+    # GraphQL API endpoint
+    scope "/graphql" do
+      pipe_through :graphql_api
+      post "/", Endpoint.GraphQL, :call
     end
   end
 
